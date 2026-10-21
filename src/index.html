@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Gradient Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Afacad:wght@500;600;700&family=Manrope:wght@500;600;700;800&display=swap">
+<!--STYLES-->
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div id="app">
+  <header class="topbar">
+    <button class="brand" id="brand" type="button" aria-label="Gradient Lab, go to the start screen">Gradient Lab</button>
+    <nav class="tabs" id="tabs" aria-label="Levels">
+      <span class="tab-ind" id="tab-ind" aria-hidden="true"></span>
+      <button class="tab" type="button" data-level="beginner"><span>Beginner</span><span class="tab-count" id="count-beginner"></span></button>
+      <button class="tab" type="button" data-level="intermediate"><span>Intermediate</span><span class="tab-count" id="count-intermediate"></span></button>
+      <button class="tab" type="button" data-level="advanced"><span>Advanced</span><span class="tab-count" id="count-advanced"></span></button>
+    </nav>
+    <div class="tools">
+      <button class="icon-btn" id="btn-motion" type="button" aria-pressed="false" aria-label="Reduce motion" title="Reduce motion">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-sound" type="button" aria-pressed="false" aria-label="Sound" title="Sound">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h4l5 4.5v-14L8 9.5z"/><path class="wave" d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/><path class="mute" d="M17 9.5l5 5m0-5l-5 5"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-replay" type="button" aria-label="Replay walkthrough" title="Replay walkthrough">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+  <main id="main" tabindex="-1">
+    <section id="welcome" class="welcome" aria-labelledby="welcome-title" hidden></section>
+    <section id="workspace" class="workspace" hidden>
+      <div class="graph-card">
+        <svg id="graph" viewBox="0 0 640 640" preserveAspectRatio="xMidYMid meet" role="group" aria-labelledby="graph-title" aria-describedby="graph-desc">
+          <title id="graph-title">Coordinate grid from −8 to 8</title>
+          <desc id="graph-desc"></desc>
+          <g id="g-grid"></g><g id="g-ref"></g><g id="g-tri"></g><g id="g-line"></g><g id="g-marks"></g><g id="g-points"></g><g id="g-hiker"></g>
+        </svg>
+        <p class="graph-caption" id="graph-caption"></p>
+      </div>
+      <div class="panel-card" id="panel-card">
+        <div class="panel-scroll" id="panel"></div>
+        <div class="mascot-col">
+          <div class="cue-bubble" id="fitila-cue" hidden>Need a hint?</div>
+          <button class="fitila-btn idle" id="fitila" type="button" aria-label="Ask Fitila for a hint" aria-expanded="false">
+            <span class="fitila-stage corner-stage"><img id="fitila-img" alt="" width="360" height="480"></span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div id="overlays"></div>
+<!--SCRIPT-->
+</body>
+</html>

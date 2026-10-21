@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+# scratch from voice work and recordings (installed narration lives in media/voice)
+review/v3/
+review/voice_options/
+review/.record-work/
