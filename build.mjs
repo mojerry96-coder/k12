@@ -62,6 +62,8 @@ const html = src('index.html')
 rmSync(join(root, 'dist', 'media'), { recursive: true, force: true }); // no stale clips
 mkdirSync(join(root, 'dist', 'media'), { recursive: true });
 writeFileSync(join(root, 'dist', 'gradient-lab.html'), html);
+// index.html too, so opening the folder or its address goes straight into the simulation (no file list)
+writeFileSync(join(root, 'dist', 'index.html'), html);
 // Video clips stay as files beside the HTML (too large to inline sensibly).
 cpSync(join(root, 'media'), join(root, 'dist', 'media'), { recursive: true });
-console.log(`dist/gradient-lab.html  ${(html.length / 1024).toFixed(0)} KB`);
+console.log(`dist/gradient-lab.html (+ dist/index.html)  ${(html.length / 1024).toFixed(0)} KB`);

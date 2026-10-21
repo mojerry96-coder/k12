@@ -22,6 +22,7 @@ Generators were sampled 500–2000 times each against the brief’s ranges (Read
 - 1366×768 light and dark: Welcome, Beginner, Intermediate, Advanced fit with graph, current task and primary controls visible; extra working scrolls inside the panel with a fade cue.
 - 375×812 (also represents 200% zoom of a 750 px window): one column, graph above panel, no horizontal page scroll, tabs fit, Fitila never over controls.
 - Real mouse drag of point B snaps to integer coordinates through `getScreenCTM()` and announces “Point B moved to (5, 2).” only on drop.
+- Every launch runs opener → walkthrough → Welcome (owner request; the pack asked for onboarding on the first visit only and returning visitors on their last level). Both stay skippable; saved progress is untouched. Opening the server's bare address loads the simulation (`dist/index.html`), not a file list.
 - First visit: opener (~6 s fly-in, Skip) → walkthrough (7 voiced beats, about a minute, Pause/Skip) → Welcome with focus on the heading. Progress storage untouched by the demo (it scored 3 points and completed a mission inside the sandbox; nothing was saved).
 - Replay from an active Advanced task, Skip midway: same challenge, typed answer and point positions restored exactly.
 - Reduced motion or width < 900 px: walkthrough becomes a static step-by-step tour with Back / Next / Skip.

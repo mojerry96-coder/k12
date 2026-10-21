@@ -1938,21 +1938,16 @@ async function runWalkthrough({ first }) {
 }
 
 // =====================================================================================
-// Boot: first visit → opener → walkthrough → Welcome. Return visit → last level.
+// Boot (owner request): every launch runs the full sequence: opener → walkthrough → Welcome.
+// Both are skippable (Skip button or Escape), and the walkthrough never touches saved progress.
 // =====================================================================================
 async function boot() {
-  if (!state.prefs.onboardingSeen) {
-    state.screen = 'welcome';
-    state.session.welcomeGestured = true; // hold the greeting until Welcome is actually visible
-    render();
-    state.prefs.onboardingSeen = true; // skipping counts: never forced again
-    persist();
-    await runOpener();
-    await runWalkthrough({ first: true });
-  } else {
-    state.screen = state.lastLevel || 'welcome';
-    render();
-  }
+  state.screen = 'welcome';
+  state.session.welcomeGestured = true; // the walkthrough's first beat plays the Welcome greeting
+  render(); // Welcome is ready behind the opener, so the dissolve reveals it
+  if (!state.prefs.onboardingSeen) { state.prefs.onboardingSeen = true; persist(); }
+  await runOpener();
+  await runWalkthrough({ first: true });
 }
 boot();
 
