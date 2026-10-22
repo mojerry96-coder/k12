@@ -9,7 +9,7 @@ Build date: 20 October 2026. Entry file: `dist/gradient-lab.html` (single self-c
 | Suite | How to run | Result |
 |---|---|---|
 | Logic (maths, predicates, generators, scoring, storage) | `npm test` | 16/16 pass |
-| In-page UI acceptance (drives real controls) | paste `test/ui-checks.js` into the console on the built page | 58/58 pass |
+| In-page UI acceptance (drives real controls) | paste `test/ui-checks.js` into the console on the built page | 59/59 pass |
 | No-scroll layout (29 panel states incl. every Advanced feedback state) | paste `test/overflow-check.js` on a fresh page | all fit at 1920×1080, 1536×864, 1440×900, 1366×768, 1280×800 and 1280×720; at 1024×768 (tablet) the two heaviest combined states scroll the panel by ≤ 29 px |
 | Visual audit (every state, 6 sizes, light + dark: screenshots plus overlap / touching / clipped-text / overflow report) | `node tools/audit/shoot.mjs http://localhost:8731/gradient-lab.html OUTDIR` | see §4a-4 |
 
@@ -57,7 +57,7 @@ Light: white on action blue 5.31; ink on background 14.95; secondary text on whi
 - **Fewer pop-ups:** the "Need a hint?" bubble and the level-complete dialog are gone; the level-done message lives in the mission card and Fitila celebrates in her corner (light; dark nods until an on-model dark celebration exists).
 - **Fitila faces the workspace:** corner clips are mirrored (CSS). All clips are now tagged with the sRGB transfer so colour-managed browsers (Safari, macOS Chrome) no longer shift the backdrop colour; verified 0–1 level from the CSS colour in Chrome.
 - **Motion (CleanMyMac-style):** spring curves (`linear()` with cubic-bezier fallback) for staged reveals, a stretching tab indicator, squishy buttons, card lift, popping notes, bouncing completion badges, popping score numbers, a gentle shake on wrong answers and squash on point drops. The graph stays anchored; reduced motion disables all of it.
-- **Voiced walkthrough:** seven narration lines (ElevenLabs; voice replaced in §4a-3), Fitila explaining what each part is for. Actions play during each line; a spotlight dims everything but the target and springs between targets; captions light up word by word, auto-fit (2 lines desktop, 4 on phones) and stay centred; segmented progress bar; Voice on/off, Pause (also pauses audio), Skip; a "Turn on voice" button appears if the browser blocks autoplay. Runs about a minute. Narration files: `media/voice/wt_0*.mp3`.
+- **Voiced walkthrough:** seven narration lines (ElevenLabs; voice replaced in §4a-3), Fitila explaining what each part is for. Actions play during each line; the part being explained pops forward (slight scale-up and lift) while everything else blurs back behind a frosted layer whose cut-out springs between targets (no outline highlight; owner request); captions light up word by word, auto-fit (2 lines desktop, 4 on phones) and stay centred; segmented progress bar; Voice on/off, Pause (also pauses audio), Skip; a "Turn on voice" button appears if the browser blocks autoplay. Runs about a minute. Narration files: `media/voice/wt_0*.mp3`.
 
 ## 4a-4. Design QA and cinematic opener (21 Oct 2026)
 
@@ -72,6 +72,10 @@ A headless-Chrome audit (`tools/audit/shoot.mjs` + `tour.js`) now walks every sc
 - The red "Here is the answer" note was kept red (spec §10 asks for red).
 
 **Cinematic opener:** follows the approved `SplashScreen.jpg` direction: a navy stage with soft concentric rings, a slow camera push and a light bloom. Fitila flies in from the top left (generated clip, see §4), lands and waves; as she lands the uLesson logo glides in beside her on a white plate (the interim logo's navy wordmark needs a light ground) with a cyan-to-gold loading line beneath. About 6 s, silent, Skip always available, Escape skips. The 16:9 stage covers landscape screens; on portrait screens it is framed on Fitila with the logo beneath her. Reduced motion shows her landed with the logo and dissolves. Note the pack's opener spec asked for 2.5–3 s with no flourish; the owner asked for a longer, cinematic fly-in, which this follows.
+
+**Light / dark:** light is the default whatever the device's appearance setting; a sun/moon toggle (first header button) switches themes with a short colour cross-fade, swaps Fitila's clips to the matching takes, and is remembered (`prefs.theme`, validated on load). The opener stays navy in both.
+
+**Welcome alignment:** Fitila now shares the content block's row: her head sits level with "Choose your level" and her feet with the bottom of the level cards (she was anchored to the bottom of the screen, about 110 px lower).
 
 **Review video:** `tools/audit/record.mjs` records the real app (first-visit opener, the voiced walkthrough, then one mission per level) to an MP4 with the narration laid in where it actually played: `review/gradient_lab_review.mp4`.
 

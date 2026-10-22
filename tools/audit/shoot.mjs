@@ -35,7 +35,7 @@ await send('Page.enable'); await send('Runtime.enable');
 await send('Runtime.addBinding', { name: '__snapBinding' });
 
 const report = [];
-let current = '', vw = 0, vh = 0;
+let current = '', vw = 0, vh = 0, themeScript = null;
 handlers.push(async (m) => {
   if (m.method !== 'Runtime.bindingCalled' || m.params.name !== '__snapBinding') return;
   const { label, issues } = JSON.parse(m.params.payload);
@@ -55,6 +55,10 @@ for (const theme of themes) for (const [w, h] of sizes) {
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 768 });
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
   await send('Runtime.evaluate', { expression: 'try{localStorage.clear()}catch{}' });
+  // the app's theme is a saved preference (light by default), so seed it for this run
+  if (themeScript) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: themeScript });
+  themeScript = (await send('Page.addScriptToEvaluateOnNewDocument', { source:
+    `try { localStorage.setItem('gradient-lab-v1', JSON.stringify({ version: 1, prefs: { theme: '${theme}' } })); } catch {}` })).identifier;
   await send('Page.navigate', { url: `${url}${url.includes('?') ? '&' : '?'}audit=${Date.now()}` });
   await sleep(1200);
   const r = await send('Runtime.evaluate', { expression: tour, awaitPromise: true, returnByValue: true });

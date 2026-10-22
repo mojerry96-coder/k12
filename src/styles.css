@@ -13,18 +13,17 @@
   --shadow: 0 1px 2px rgba(9, 34, 61, .04), 0 6px 24px rgba(9, 34, 61, .05);
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0e1b29; --surface: #162839; --surface-2: #1d3247; --ink: #eef5fb; --muted: #a9bdd0;
-    --border: #2c455c; --action: #6cc4f5; --on-action: #06223a; --action-soft: #1f3d57; --accent: #6cc4f5;
-    --line: #ff6470; --pa: #6aa6ff; --pb: #c194f7; --run: #6cbcf2; --rise: #45d197; --tri: rgba(255, 214, 102, .2);
-    --ref: #8ea2b5; --plot: #132434; --grid: #20354a; --grid-major: #2b445c; --track: #2a4157;
-    --ok: #59d69a; --ok-bg: #143628; --ok-bd: #2f8a5e;
-    --warn-bg: #3a3117; --warn-bd: #9b7d22; --warn-ink: #f6dd92;
-    --info-bg: #172f47; --info-bd: #3f79a8;
-    --bad: #ff8a80; --bad-bg: #3d1d1d; --bad-bd: #9c4a45;
-    --shadow: none; color-scheme: dark;
-  }
+/* Dark theme: chosen with the header toggle (light is the default, whatever the OS setting). */
+:root[data-theme="dark"] {
+  --bg: #0e1b29; --surface: #162839; --surface-2: #1d3247; --ink: #eef5fb; --muted: #a9bdd0;
+  --border: #2c455c; --action: #6cc4f5; --on-action: #06223a; --action-soft: #1f3d57; --accent: #6cc4f5;
+  --line: #ff6470; --pa: #6aa6ff; --pb: #c194f7; --run: #6cbcf2; --rise: #45d197; --tri: rgba(255, 214, 102, .2);
+  --ref: #8ea2b5; --plot: #132434; --grid: #20354a; --grid-major: #2b445c; --track: #2a4157;
+  --ok: #59d69a; --ok-bg: #143628; --ok-bd: #2f8a5e;
+  --warn-bg: #3a3117; --warn-bd: #9b7d22; --warn-ink: #f6dd92;
+  --info-bg: #172f47; --info-bd: #3f79a8;
+  --bad: #ff8a80; --bad-bg: #3d1d1d; --bad-bd: #9c4a45;
+  --shadow: none; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -80,8 +79,9 @@ main { flex: 1; min-height: 0; padding: 0 28px 24px; }
 .link-btn svg { width: 18px; height: 18px; }
 
 /* ---------- Welcome ---------- */
-.welcome { min-height: calc(100dvh - 76px - 24px); display: grid; grid-template-columns: minmax(240px, 34%) 1fr; align-items: center; gap: 12px; max-width: 1400px; margin: 0 auto; }
-.welcome-fitila { justify-self: stretch; align-self: end; min-width: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 4vh; }
+.welcome { min-height: calc(100dvh - 76px - 24px); display: grid; grid-template-columns: minmax(240px, 34%) 1fr; align-content: center; align-items: end; gap: 12px; max-width: 1400px; margin: 0 auto; }
+/* Fitila shares the content block's row and bottom edge: head level with "Choose your level", feet at the cards */
+.welcome-fitila { justify-self: stretch; align-self: end; min-width: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 0; }
 .welcome-fitila .fitila-btn { width: 100%; height: auto; display: flex; justify-content: center; }
 /* Width-bounded: the clip's frame can never be wider than Fitila's own column, so its
    background never slides over the level cards. Cards also sit above it as a safety net. */
@@ -412,8 +412,6 @@ details[open].disclosure > summary svg { transform: rotate(90deg); }
 .wt-guide { position: fixed; left: 0; top: 0; transform-origin: 0 0; will-change: transform; z-index: 2; }
 .wt-guide img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .wt-cursor { position: fixed; left: 0; top: 0; width: 30px; height: 30px; z-index: 3; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .3)); }
-.wt-ring { position: fixed; border-radius: 16px; box-shadow: 0 0 0 3px var(--action), 0 0 0 9px color-mix(in srgb, var(--action) 18%, transparent); transition: all 350ms var(--ease); opacity: 0; }
-.wt-ring.on { opacity: 1; }
 .wt-badge { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700; }
 .wt-active .welcome-fitila img.wt-hide, .wt-hide { visibility: hidden; }
 
@@ -677,13 +675,15 @@ html:not(.anim) *, html:not(.anim) *::before, html:not(.anim) *::after { transit
    Walkthrough: spotlight, caption bar, word-by-word captions
    ===================================================================================== */
 .wt-block { z-index: 0; }
-.wt-ring { z-index: 1; border-radius: 18px; pointer-events: none; opacity: 0;
-  box-shadow: 0 0 0 3px var(--action), 0 0 0 10px color-mix(in srgb, var(--action) 16%, transparent), 0 0 0 9999px rgba(9, 34, 61, .34);
-  transition: left 620ms var(--spring), top 620ms var(--spring), width 620ms var(--spring), height 620ms var(--spring), opacity 260ms ease; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wt-ring { box-shadow: 0 0 0 3px var(--action), 0 0 0 10px color-mix(in srgb, var(--action) 18%, transparent), 0 0 0 9999px rgba(0, 0, 0, .5); } }
-.wt-ring.on { opacity: 1; }
-.anim .wt-ring.land { animation: ringLand 700ms var(--spring); }
-@keyframes ringLand { 0% { transform: scale(1.06); } 100% { transform: scale(1); } }
+/* Focus: everything not being talked about blurs back behind a frosted layer with a cut-out;
+   the element being explained pops forward (scale + soft lift). No outline highlight. */
+.wt-blur { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 380ms ease;
+  -webkit-backdrop-filter: blur(7px) saturate(.8); backdrop-filter: blur(7px) saturate(.8);
+  background: color-mix(in srgb, var(--bg) 30%, transparent); }
+.wt-blur.on { opacity: 1; }
+.wt-pop { scale: var(--pop, 1.03); filter: drop-shadow(0 16px 26px rgba(9, 34, 61, .20)); position: relative; z-index: 2; }
+:root[data-theme="dark"] .wt-pop { filter: drop-shadow(0 16px 30px rgba(0, 0, 0, .55)); }
+.anim body.wt-active [style*="--pop"] { transition: scale 640ms var(--spring), filter 400ms ease; } /* pops forward and eases back */
 .wt-guide { z-index: 2; }
 .wt-cursor { z-index: 3; }
 
@@ -734,3 +734,13 @@ html:not(.anim) *, html:not(.anim) *::before, html:not(.anim) *::after { transit
 @keyframes clipFade { from { opacity: 0; } to { opacity: 1; } }
 .fitila-stage video.pool.active { z-index: 1; }
 .fitila-stage video.pool.fading-in { z-index: 2; }
+
+/* Theme toggle: sun in light mode, moon in dark; colours cross-fade briefly when switching. */
+#btn-theme .moon { display: none; }
+:root[data-theme="dark"] #btn-theme .sun { display: none; }
+:root[data-theme="dark"] #btn-theme .moon { display: inline; }
+html.theme-swap, html.theme-swap *, html.theme-swap *::before, html.theme-swap *::after {
+  transition: background-color 360ms ease, color 360ms ease, border-color 360ms ease, fill 360ms ease, stroke 360ms ease !important; }
+.anim #btn-theme svg { transition: transform 520ms var(--spring); }
+.anim #btn-theme:active svg { transform: rotate(-30deg) scale(.9); }
+

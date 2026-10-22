@@ -192,6 +192,11 @@ test('storage saves only permitted fields and validates on load', () => {
   store.set(S.STORAGE_KEY, JSON.stringify({ version: 1, lastLevel: 'hacker', beginner: [99, 2, 'x'], advanced: { points: -4, type: 'evil' } }));
   const bad = S.load(storage);
   assert.equal(bad.lastLevel, null); assert.deepEqual(bad.beginner.completed, [2]); assert.equal(bad.advanced.points, 0); assert.equal(bad.advanced.type, 'mixed');
+  assert.equal(S.initialState().prefs.theme, 'light'); // light unless the learner chooses dark
+  store.set(S.STORAGE_KEY, JSON.stringify({ version: 1, prefs: { theme: 'dark' } }));
+  assert.equal(S.load(storage).prefs.theme, 'dark');
+  store.set(S.STORAGE_KEY, JSON.stringify({ version: 1, prefs: { theme: 'neon' } }));
+  assert.equal(S.load(storage).prefs.theme, 'light');
   const broken = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
   assert.equal(S.save(s, broken), false);
   assert.equal(S.load(broken).screen, 'welcome');

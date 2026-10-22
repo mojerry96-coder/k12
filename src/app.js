@@ -65,8 +65,7 @@ const CLIP = {
     dark: { src: 'media/fitila_celebrate_dark.mp4', first: 'celebrate_dark_rest', last: 'celebrate_dark_rest' },
   },
 };
-const darkMQ = matchMedia('(prefers-color-scheme: dark)');
-const theme = () => (darkMQ.matches ? 'dark' : 'light');
+const theme = () => (state.prefs.theme === 'dark' ? 'dark' : 'light'); // light unless the learner chose dark
 const clipFor = (name) => CLIP[name][theme()];
 
 // One reusable <video> per host: created once (preloaded), rewound and replayed instantly.
@@ -361,6 +360,7 @@ function renderChrome() {
   $('[data-level=beginner]').setAttribute('aria-label', `Beginner, ${b} of 7 missions done`);
   $('[data-level=intermediate]').setAttribute('aria-label', `Intermediate, ${i} of 6 missions done`);
   $('[data-level=advanced]').setAttribute('aria-label', `Advanced, ${a} challenge${a === 1 ? '' : 's'} solved`);
+  $('#btn-theme').setAttribute('aria-pressed', String(theme() === 'dark'));
   $('#btn-sound').setAttribute('aria-pressed', String(state.prefs.sound));
   $('#btn-sound').setAttribute('aria-label', state.prefs.sound ? 'Sound on' : 'Sound off');
   $('#btn-motion').setAttribute('aria-pressed', String(reduced()));
@@ -1295,12 +1295,21 @@ $('#btn-sound').addEventListener('click', () => { state.prefs.sound = !state.pre
 $('#btn-motion').addEventListener('click', () => { state.prefs.reducedMotion = !reduced(); persist(); renderChrome(); cornerStop(); cornerIdle(); announce(reduced() ? 'Reduced motion on' : 'Reduced motion off'); });
 $('#btn-replay').addEventListener('click', () => runWalkthrough({ first: false }));
 mq.addEventListener?.('change', () => { renderChrome(); cornerStop(); cornerIdle(); });
-darkMQ.addEventListener?.('change', () => {
+// Light / dark: the page colours and Fitila's clips (each generated on its theme's colours) swap together.
+function applyTheme() { document.documentElement.dataset.theme = theme(); }
+$('#btn-theme').addEventListener('click', () => {
+  state.prefs.theme = theme() === 'dark' ? 'light' : 'dark';
+  persist();
+  const html = document.documentElement;
+  if (!reduced()) { html.classList.add('theme-swap'); later('theme-swap', 420, () => html.classList.remove('theme-swap')); }
+  applyTheme();
   for (const host of $$('.fitila-stage')) host.querySelector('video')?.remove(), host.classList.remove('video-on');
   poolTheme = null;
   cornerStop(); cornerIdle();
   corner.sync();
   const w = $('#w-fitila img'); if (w) w.src = ASSET[clipFor('greet').last];
+  renderChrome();
+  announce(theme() === 'dark' ? 'Dark mode on' : 'Light mode on');
 });
 addEventListener('resize', () => { placeTabIndicator(); if (isLevel(state.screen)) updateMore(); });
 $('#panel').addEventListener('scroll', updateMore, { passive: true });
@@ -1578,7 +1587,7 @@ async function runWalkthrough({ first }) {
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-label', 'Walkthrough');
-  root.innerHTML = `<div class="wt-block"></div><div class="wt-ring" id="wt-ring"></div>
+  root.innerHTML = `<div class="wt-block"></div><div class="wt-blur" id="wt-blur" aria-hidden="true"></div>
     <div class="wt-guide" id="wt-guide" hidden><img alt="" src="${ASSET.neutral}"></div>
     <svg class="wt-cursor" id="wt-cursor" viewBox="0 0 24 24" aria-hidden="true" style="opacity:0"><path d="M4 2l15 11.5-6.5 1 3.6 6.8-2.6 1.4-3.7-6.9L4 20z" fill="#fff" stroke="#09223d" stroke-width="1.6" stroke-linejoin="round"/></svg>
     <div class="wt-bar">
@@ -1606,7 +1615,7 @@ async function runWalkthrough({ first }) {
   const BASE = narrow ? 1 : 0.86; // the stage shrinks a little to make room for the caption bar
   if (narrow) document.body.style.paddingBottom = '22vh';
   if (!narrow) appEl.style.transform = `translate(${(innerWidth - innerWidth * BASE) / 2}px, 8px) scale(${BASE})`;
-  const guideEl = $('#wt-guide'), guideImg = guideEl.querySelector('img'), cursor = $('#wt-cursor'), ring = $('#wt-ring');
+  const guideEl = $('#wt-guide'), guideImg = guideEl.querySelector('img'), cursor = $('#wt-cursor'), blurEl = $('#wt-blur');
   let gpos = null, cpos = { x: innerWidth / 2, y: innerHeight };
 
   const wait = async (ms) => { if (fast) return; await clock.sleep(ms); if (clock.cancelled) throw CANCEL; };
@@ -1685,20 +1694,48 @@ async function runWalkthrough({ first }) {
     syncVoiceBtn();
   });
 
-  // ---------- spotlight ----------
-  let ringEl = null, ringPad = 8;
-  const placeRing = () => {
-    if (!ringEl || !document.contains(ringEl)) { ring.classList.remove('on'); return; }
-    const r = ringEl.getBoundingClientRect(), p = ringPad;
-    Object.assign(ring.style, { left: r.left - p + 'px', top: r.top - p + 'px', width: r.width + p * 2 + 'px', height: r.height + p * 2 + 'px' });
-    ring.classList.add('on');
+  // ---------- focus: the part being explained pops forward, everything else blurs back ----------
+  // A frosted layer covers the app with a rounded cut-out over the focused element; the
+  // element itself scales up a little. The cut-out glides between targets on a spring.
+  let ringEl = null, ringPad = 8, hole = null, holeRaf = 0;
+  const popScale = (r) => 1 + Math.min(0.04, 14 / Math.max(r.width, r.height)); // big panels pop less
+  const holePath = ({ x, y, w, h }) => {
+    const W = innerWidth, H = innerHeight, r = Math.min(18, w / 2, h / 2);
+    return `path(evenodd, "M0 0H${W}V${H}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}`
+      + `A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z")`;
+  };
+  const setHole = (hl) => { hole = hl; blurEl.style.clipPath = holePath(hl); };
+  const spring = (t) => 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 0.9); // ease out with a soft settle
+  const glideHole = (to) => {
+    cancelAnimationFrame(holeRaf);
+    if (!hole || fast || staticMotion()) return setHole(to);
+    const from = { ...hole }, t0 = performance.now(), dur = 620;
+    const step = (now) => {
+      const k = spring(Math.min(1, (now - t0) / dur)), mix = (a, b) => a + (b - a) * k;
+      setHole({ x: mix(from.x, to.x), y: mix(from.y, to.y), w: mix(from.w, to.w), h: mix(from.h, to.h) });
+      if (now - t0 < dur) holeRaf = requestAnimationFrame(step);
+    };
+    holeRaf = requestAnimationFrame(step);
+  };
+  // the cut-out for an element at its popped size (rect measured before the pop is applied)
+  const holeFor = (r, sc, p) => ({ x: r.left - (r.width * (sc - 1)) / 2 - p, y: r.top - (r.height * (sc - 1)) / 2 - p,
+    w: r.width * sc + p * 2, h: r.height * sc + p * 2 });
+  const placeRing = () => { // scroll / resize: the element is already popped, so measure it as it is
+    if (!ringEl || !document.contains(ringEl)) { blurEl.classList.remove('on'); return; }
+    cancelAnimationFrame(holeRaf);
+    setHole(holeFor(ringEl.getBoundingClientRect(), 1, ringPad));
   };
   const ringOn = (el, pad = 10) => {
-    const moved = el !== ringEl;
+    if (el === ringEl) return placeRing();
+    ringEl?.classList.remove('wt-pop');
     ringEl = el; ringPad = pad;
-    if (el && narrow) el.scrollIntoView({ block: 'center' }); // scroll first, then measure
-    placeRing();
-    if (el && moved && !fast) { ring.classList.remove('land'); void ring.offsetWidth; ring.classList.add('land'); }
+    if (!el) { blurEl.classList.remove('on'); return; }
+    if (narrow) el.scrollIntoView({ block: 'center' }); // scroll first, then measure
+    const r = el.getBoundingClientRect(), sc = staticMotion() ? 1 : popScale(r);
+    el.style.setProperty('--pop', sc);
+    const to = holeFor(r, sc, pad);
+    if (blurEl.classList.contains('on')) glideHole(to); else { setHole(to); blurEl.classList.add('on'); }
+    el.classList.add('wt-pop');
   };
   addEventListener('scroll', placeRing, { passive: true });
   addEventListener('resize', placeRing);
@@ -1879,6 +1916,8 @@ async function runWalkthrough({ first }) {
     removeEventListener('scroll', placeRing);
     removeEventListener('resize', placeRing);
     removeEventListener('resize', fitCaption);
+    cancelAnimationFrame(holeRaf);
+    $$('.wt-pop').forEach((e) => { e.classList.remove('wt-pop'); e.style.removeProperty('--pop'); });
     stopTransient();
     root.remove();
     appEl.style.transform = '';
@@ -1942,6 +1981,7 @@ async function runWalkthrough({ first }) {
 // Both are skippable (Skip button or Escape), and the walkthrough never touches saved progress.
 // =====================================================================================
 async function boot() {
+  applyTheme();
   state.screen = 'welcome';
   state.session.welcomeGestured = true; // the walkthrough's first beat plays the Welcome greeting
   render(); // Welcome is ready behind the opener, so the dissolve reveals it

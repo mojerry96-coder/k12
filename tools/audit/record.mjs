@@ -42,6 +42,9 @@ const evaluate = async (expression) => {
 await send('Page.enable'); await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: process.env.THEME || 'light' }] });
+// the app's theme is a saved preference (light by default)
+await send('Page.addScriptToEvaluateOnNewDocument', { source:
+  `try { localStorage.setItem('gradient-lab-v1', JSON.stringify({ version: 1, prefs: { theme: '${process.env.THEME === 'dark' ? 'dark' : 'light'}' } })); } catch {}` });
 // note when each narration line really starts, in wall-clock seconds (the screencast's clock)
 await send('Page.addScriptToEvaluateOnNewDocument', { source: `
   window.__voiceLog = [];

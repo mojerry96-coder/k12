@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <title>Gradient Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,18 +24,17 @@
   --shadow: 0 1px 2px rgba(9, 34, 61, .04), 0 6px 24px rgba(9, 34, 61, .05);
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0e1b29; --surface: #162839; --surface-2: #1d3247; --ink: #eef5fb; --muted: #a9bdd0;
-    --border: #2c455c; --action: #6cc4f5; --on-action: #06223a; --action-soft: #1f3d57; --accent: #6cc4f5;
-    --line: #ff6470; --pa: #6aa6ff; --pb: #c194f7; --run: #6cbcf2; --rise: #45d197; --tri: rgba(255, 214, 102, .2);
-    --ref: #8ea2b5; --plot: #132434; --grid: #20354a; --grid-major: #2b445c; --track: #2a4157;
-    --ok: #59d69a; --ok-bg: #143628; --ok-bd: #2f8a5e;
-    --warn-bg: #3a3117; --warn-bd: #9b7d22; --warn-ink: #f6dd92;
-    --info-bg: #172f47; --info-bd: #3f79a8;
-    --bad: #ff8a80; --bad-bg: #3d1d1d; --bad-bd: #9c4a45;
-    --shadow: none; color-scheme: dark;
-  }
+/* Dark theme: chosen with the header toggle (light is the default, whatever the OS setting). */
+:root[data-theme="dark"] {
+  --bg: #0e1b29; --surface: #162839; --surface-2: #1d3247; --ink: #eef5fb; --muted: #a9bdd0;
+  --border: #2c455c; --action: #6cc4f5; --on-action: #06223a; --action-soft: #1f3d57; --accent: #6cc4f5;
+  --line: #ff6470; --pa: #6aa6ff; --pb: #c194f7; --run: #6cbcf2; --rise: #45d197; --tri: rgba(255, 214, 102, .2);
+  --ref: #8ea2b5; --plot: #132434; --grid: #20354a; --grid-major: #2b445c; --track: #2a4157;
+  --ok: #59d69a; --ok-bg: #143628; --ok-bd: #2f8a5e;
+  --warn-bg: #3a3117; --warn-bd: #9b7d22; --warn-ink: #f6dd92;
+  --info-bg: #172f47; --info-bd: #3f79a8;
+  --bad: #ff8a80; --bad-bg: #3d1d1d; --bad-bd: #9c4a45;
+  --shadow: none; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -91,8 +90,9 @@ main { flex: 1; min-height: 0; padding: 0 28px 24px; }
 .link-btn svg { width: 18px; height: 18px; }
 
 /* ---------- Welcome ---------- */
-.welcome { min-height: calc(100dvh - 76px - 24px); display: grid; grid-template-columns: minmax(240px, 34%) 1fr; align-items: center; gap: 12px; max-width: 1400px; margin: 0 auto; }
-.welcome-fitila { justify-self: stretch; align-self: end; min-width: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 4vh; }
+.welcome { min-height: calc(100dvh - 76px - 24px); display: grid; grid-template-columns: minmax(240px, 34%) 1fr; align-content: center; align-items: end; gap: 12px; max-width: 1400px; margin: 0 auto; }
+/* Fitila shares the content block's row and bottom edge: head level with "Choose your level", feet at the cards */
+.welcome-fitila { justify-self: stretch; align-self: end; min-width: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 0; }
 .welcome-fitila .fitila-btn { width: 100%; height: auto; display: flex; justify-content: center; }
 /* Width-bounded: the clip's frame can never be wider than Fitila's own column, so its
    background never slides over the level cards. Cards also sit above it as a safety net. */
@@ -423,8 +423,6 @@ details[open].disclosure > summary svg { transform: rotate(90deg); }
 .wt-guide { position: fixed; left: 0; top: 0; transform-origin: 0 0; will-change: transform; z-index: 2; }
 .wt-guide img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .wt-cursor { position: fixed; left: 0; top: 0; width: 30px; height: 30px; z-index: 3; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .3)); }
-.wt-ring { position: fixed; border-radius: 16px; box-shadow: 0 0 0 3px var(--action), 0 0 0 9px color-mix(in srgb, var(--action) 18%, transparent); transition: all 350ms var(--ease); opacity: 0; }
-.wt-ring.on { opacity: 1; }
 .wt-badge { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700; }
 .wt-active .welcome-fitila img.wt-hide, .wt-hide { visibility: hidden; }
 
@@ -688,13 +686,15 @@ html:not(.anim) *, html:not(.anim) *::before, html:not(.anim) *::after { transit
    Walkthrough: spotlight, caption bar, word-by-word captions
    ===================================================================================== */
 .wt-block { z-index: 0; }
-.wt-ring { z-index: 1; border-radius: 18px; pointer-events: none; opacity: 0;
-  box-shadow: 0 0 0 3px var(--action), 0 0 0 10px color-mix(in srgb, var(--action) 16%, transparent), 0 0 0 9999px rgba(9, 34, 61, .34);
-  transition: left 620ms var(--spring), top 620ms var(--spring), width 620ms var(--spring), height 620ms var(--spring), opacity 260ms ease; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wt-ring { box-shadow: 0 0 0 3px var(--action), 0 0 0 10px color-mix(in srgb, var(--action) 18%, transparent), 0 0 0 9999px rgba(0, 0, 0, .5); } }
-.wt-ring.on { opacity: 1; }
-.anim .wt-ring.land { animation: ringLand 700ms var(--spring); }
-@keyframes ringLand { 0% { transform: scale(1.06); } 100% { transform: scale(1); } }
+/* Focus: everything not being talked about blurs back behind a frosted layer with a cut-out;
+   the element being explained pops forward (scale + soft lift). No outline highlight. */
+.wt-blur { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 380ms ease;
+  -webkit-backdrop-filter: blur(7px) saturate(.8); backdrop-filter: blur(7px) saturate(.8);
+  background: color-mix(in srgb, var(--bg) 30%, transparent); }
+.wt-blur.on { opacity: 1; }
+.wt-pop { scale: var(--pop, 1.03); filter: drop-shadow(0 16px 26px rgba(9, 34, 61, .20)); position: relative; z-index: 2; }
+:root[data-theme="dark"] .wt-pop { filter: drop-shadow(0 16px 30px rgba(0, 0, 0, .55)); }
+.anim body.wt-active [style*="--pop"] { transition: scale 640ms var(--spring), filter 400ms ease; } /* pops forward and eases back */
 .wt-guide { z-index: 2; }
 .wt-cursor { z-index: 3; }
 
@@ -746,6 +746,16 @@ html:not(.anim) *, html:not(.anim) *::before, html:not(.anim) *::after { transit
 .fitila-stage video.pool.active { z-index: 1; }
 .fitila-stage video.pool.fading-in { z-index: 2; }
 
+/* Theme toggle: sun in light mode, moon in dark; colours cross-fade briefly when switching. */
+#btn-theme .moon { display: none; }
+:root[data-theme="dark"] #btn-theme .sun { display: none; }
+:root[data-theme="dark"] #btn-theme .moon { display: inline; }
+html.theme-swap, html.theme-swap *, html.theme-swap *::before, html.theme-swap *::after {
+  transition: background-color 360ms ease, color 360ms ease, border-color 360ms ease, fill 360ms ease, stroke 360ms ease !important; }
+.anim #btn-theme svg { transition: transform 520ms var(--spring); }
+.anim #btn-theme:active svg { transform: rotate(-30deg) scale(.9); }
+
+
 </style>
 </head>
 <body>
@@ -760,6 +770,10 @@ html:not(.anim) *, html:not(.anim) *::before, html:not(.anim) *::after { transit
       <button class="tab" type="button" data-level="advanced"><span>Advanced</span><span class="tab-count" id="count-advanced"></span></button>
     </nav>
     <div class="tools">
+      <button class="icon-btn" id="btn-theme" type="button" aria-pressed="false" aria-label="Dark mode" title="Dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      </button>
       <button class="icon-btn" id="btn-motion" type="button" aria-pressed="false" aria-label="Reduce motion" title="Reduce motion">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
       </button>
@@ -1333,7 +1347,7 @@ function initialState() {
       example: null, hint: false, inputs: { m: '', c: '', v: '' }, sliders: { m: 0, c: 0 },
       points: 0, solved: 0, streak: 0, bestStreak: 0,
     },
-    prefs: { sound: false, reducedMotion: null, onboardingSeen: false, voice: true },
+    prefs: { sound: false, reducedMotion: null, onboardingSeen: false, voice: true, theme: 'light' },
     session: { completeShown: { beginner: false, intermediate: false }, cueShown: {}, moved: {} },
   };
 }
@@ -1400,6 +1414,7 @@ function load(storage) {
   if (typeof p.reducedMotion === 'boolean') s.prefs.reducedMotion = p.reducedMotion;
   if (typeof p.onboardingSeen === 'boolean') s.prefs.onboardingSeen = p.onboardingSeen;
   if (typeof p.voice === 'boolean') s.prefs.voice = p.voice;
+  if (p.theme === 'light' || p.theme === 'dark') s.prefs.theme = p.theme;
   return s;
 }
 
@@ -1472,8 +1487,7 @@ const CLIP = {
     dark: { src: 'media/fitila_celebrate_dark.mp4', first: 'celebrate_dark_rest', last: 'celebrate_dark_rest' },
   },
 };
-const darkMQ = matchMedia('(prefers-color-scheme: dark)');
-const theme = () => (darkMQ.matches ? 'dark' : 'light');
+const theme = () => (state.prefs.theme === 'dark' ? 'dark' : 'light'); // light unless the learner chose dark
 const clipFor = (name) => CLIP[name][theme()];
 
 // One reusable <video> per host: created once (preloaded), rewound and replayed instantly.
@@ -1768,6 +1782,7 @@ function renderChrome() {
   $('[data-level=beginner]').setAttribute('aria-label', `Beginner, ${b} of 7 missions done`);
   $('[data-level=intermediate]').setAttribute('aria-label', `Intermediate, ${i} of 6 missions done`);
   $('[data-level=advanced]').setAttribute('aria-label', `Advanced, ${a} challenge${a === 1 ? '' : 's'} solved`);
+  $('#btn-theme').setAttribute('aria-pressed', String(theme() === 'dark'));
   $('#btn-sound').setAttribute('aria-pressed', String(state.prefs.sound));
   $('#btn-sound').setAttribute('aria-label', state.prefs.sound ? 'Sound on' : 'Sound off');
   $('#btn-motion').setAttribute('aria-pressed', String(reduced()));
@@ -2702,12 +2717,21 @@ $('#btn-sound').addEventListener('click', () => { state.prefs.sound = !state.pre
 $('#btn-motion').addEventListener('click', () => { state.prefs.reducedMotion = !reduced(); persist(); renderChrome(); cornerStop(); cornerIdle(); announce(reduced() ? 'Reduced motion on' : 'Reduced motion off'); });
 $('#btn-replay').addEventListener('click', () => runWalkthrough({ first: false }));
 mq.addEventListener?.('change', () => { renderChrome(); cornerStop(); cornerIdle(); });
-darkMQ.addEventListener?.('change', () => {
+// Light / dark: the page colours and Fitila's clips (each generated on its theme's colours) swap together.
+function applyTheme() { document.documentElement.dataset.theme = theme(); }
+$('#btn-theme').addEventListener('click', () => {
+  state.prefs.theme = theme() === 'dark' ? 'light' : 'dark';
+  persist();
+  const html = document.documentElement;
+  if (!reduced()) { html.classList.add('theme-swap'); later('theme-swap', 420, () => html.classList.remove('theme-swap')); }
+  applyTheme();
   for (const host of $$('.fitila-stage')) host.querySelector('video')?.remove(), host.classList.remove('video-on');
   poolTheme = null;
   cornerStop(); cornerIdle();
   corner.sync();
   const w = $('#w-fitila img'); if (w) w.src = ASSET[clipFor('greet').last];
+  renderChrome();
+  announce(theme() === 'dark' ? 'Dark mode on' : 'Light mode on');
 });
 addEventListener('resize', () => { placeTabIndicator(); if (isLevel(state.screen)) updateMore(); });
 $('#panel').addEventListener('scroll', updateMore, { passive: true });
@@ -2985,7 +3009,7 @@ async function runWalkthrough({ first }) {
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-label', 'Walkthrough');
-  root.innerHTML = `<div class="wt-block"></div><div class="wt-ring" id="wt-ring"></div>
+  root.innerHTML = `<div class="wt-block"></div><div class="wt-blur" id="wt-blur" aria-hidden="true"></div>
     <div class="wt-guide" id="wt-guide" hidden><img alt="" src="${ASSET.neutral}"></div>
     <svg class="wt-cursor" id="wt-cursor" viewBox="0 0 24 24" aria-hidden="true" style="opacity:0"><path d="M4 2l15 11.5-6.5 1 3.6 6.8-2.6 1.4-3.7-6.9L4 20z" fill="#fff" stroke="#09223d" stroke-width="1.6" stroke-linejoin="round"/></svg>
     <div class="wt-bar">
@@ -3013,7 +3037,7 @@ async function runWalkthrough({ first }) {
   const BASE = narrow ? 1 : 0.86; // the stage shrinks a little to make room for the caption bar
   if (narrow) document.body.style.paddingBottom = '22vh';
   if (!narrow) appEl.style.transform = `translate(${(innerWidth - innerWidth * BASE) / 2}px, 8px) scale(${BASE})`;
-  const guideEl = $('#wt-guide'), guideImg = guideEl.querySelector('img'), cursor = $('#wt-cursor'), ring = $('#wt-ring');
+  const guideEl = $('#wt-guide'), guideImg = guideEl.querySelector('img'), cursor = $('#wt-cursor'), blurEl = $('#wt-blur');
   let gpos = null, cpos = { x: innerWidth / 2, y: innerHeight };
 
   const wait = async (ms) => { if (fast) return; await clock.sleep(ms); if (clock.cancelled) throw CANCEL; };
@@ -3092,20 +3116,48 @@ async function runWalkthrough({ first }) {
     syncVoiceBtn();
   });
 
-  // ---------- spotlight ----------
-  let ringEl = null, ringPad = 8;
-  const placeRing = () => {
-    if (!ringEl || !document.contains(ringEl)) { ring.classList.remove('on'); return; }
-    const r = ringEl.getBoundingClientRect(), p = ringPad;
-    Object.assign(ring.style, { left: r.left - p + 'px', top: r.top - p + 'px', width: r.width + p * 2 + 'px', height: r.height + p * 2 + 'px' });
-    ring.classList.add('on');
+  // ---------- focus: the part being explained pops forward, everything else blurs back ----------
+  // A frosted layer covers the app with a rounded cut-out over the focused element; the
+  // element itself scales up a little. The cut-out glides between targets on a spring.
+  let ringEl = null, ringPad = 8, hole = null, holeRaf = 0;
+  const popScale = (r) => 1 + Math.min(0.04, 14 / Math.max(r.width, r.height)); // big panels pop less
+  const holePath = ({ x, y, w, h }) => {
+    const W = innerWidth, H = innerHeight, r = Math.min(18, w / 2, h / 2);
+    return `path(evenodd, "M0 0H${W}V${H}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}`
+      + `A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z")`;
+  };
+  const setHole = (hl) => { hole = hl; blurEl.style.clipPath = holePath(hl); };
+  const spring = (t) => 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 0.9); // ease out with a soft settle
+  const glideHole = (to) => {
+    cancelAnimationFrame(holeRaf);
+    if (!hole || fast || staticMotion()) return setHole(to);
+    const from = { ...hole }, t0 = performance.now(), dur = 620;
+    const step = (now) => {
+      const k = spring(Math.min(1, (now - t0) / dur)), mix = (a, b) => a + (b - a) * k;
+      setHole({ x: mix(from.x, to.x), y: mix(from.y, to.y), w: mix(from.w, to.w), h: mix(from.h, to.h) });
+      if (now - t0 < dur) holeRaf = requestAnimationFrame(step);
+    };
+    holeRaf = requestAnimationFrame(step);
+  };
+  // the cut-out for an element at its popped size (rect measured before the pop is applied)
+  const holeFor = (r, sc, p) => ({ x: r.left - (r.width * (sc - 1)) / 2 - p, y: r.top - (r.height * (sc - 1)) / 2 - p,
+    w: r.width * sc + p * 2, h: r.height * sc + p * 2 });
+  const placeRing = () => { // scroll / resize: the element is already popped, so measure it as it is
+    if (!ringEl || !document.contains(ringEl)) { blurEl.classList.remove('on'); return; }
+    cancelAnimationFrame(holeRaf);
+    setHole(holeFor(ringEl.getBoundingClientRect(), 1, ringPad));
   };
   const ringOn = (el, pad = 10) => {
-    const moved = el !== ringEl;
+    if (el === ringEl) return placeRing();
+    ringEl?.classList.remove('wt-pop');
     ringEl = el; ringPad = pad;
-    if (el && narrow) el.scrollIntoView({ block: 'center' }); // scroll first, then measure
-    placeRing();
-    if (el && moved && !fast) { ring.classList.remove('land'); void ring.offsetWidth; ring.classList.add('land'); }
+    if (!el) { blurEl.classList.remove('on'); return; }
+    if (narrow) el.scrollIntoView({ block: 'center' }); // scroll first, then measure
+    const r = el.getBoundingClientRect(), sc = staticMotion() ? 1 : popScale(r);
+    el.style.setProperty('--pop', sc);
+    const to = holeFor(r, sc, pad);
+    if (blurEl.classList.contains('on')) glideHole(to); else { setHole(to); blurEl.classList.add('on'); }
+    el.classList.add('wt-pop');
   };
   addEventListener('scroll', placeRing, { passive: true });
   addEventListener('resize', placeRing);
@@ -3286,6 +3338,8 @@ async function runWalkthrough({ first }) {
     removeEventListener('scroll', placeRing);
     removeEventListener('resize', placeRing);
     removeEventListener('resize', fitCaption);
+    cancelAnimationFrame(holeRaf);
+    $$('.wt-pop').forEach((e) => { e.classList.remove('wt-pop'); e.style.removeProperty('--pop'); });
     stopTransient();
     root.remove();
     appEl.style.transform = '';
@@ -3349,6 +3403,7 @@ async function runWalkthrough({ first }) {
 // Both are skippable (Skip button or Escape), and the walkthrough never touches saved progress.
 // =====================================================================================
 async function boot() {
+  applyTheme();
   state.screen = 'welcome';
   state.session.welcomeGestured = true; // the walkthrough's first beat plays the Welcome greeting
   render(); // Welcome is ready behind the opener, so the dissolve reveals it

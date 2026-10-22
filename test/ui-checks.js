@@ -163,6 +163,15 @@
   $('#a-reset').click(); $('#a-reset').click();
   ok('A: Reset my score zeros all four metrics', ['points', 'solved', 'streak', 'bestStreak'].every((k) => S().advanced[k] === 0));
 
+  // ---------------- Theme ----------------
+  const th0 = document.documentElement.dataset.theme;
+  $('#btn-theme').click();
+  const th1 = document.documentElement.dataset.theme;
+  const thSaved = JSON.parse(localStorage.getItem('gradient-lab-v1')).prefs.theme;
+  $('#btn-theme').click();
+  ok('Theme: toggle switches light/dark, is saved, and toggles back', th0 !== th1 && thSaved === th1 && document.documentElement.dataset.theme === th0
+    && $('#btn-theme').getAttribute('aria-pressed') === String(th0 === 'dark'));
+
   // ---------------- Persistence ----------------
   const saved = JSON.parse(localStorage.getItem('gradient-lab-v1'));
   ok('Storage: last level + completions saved', saved.lastLevel === 'advanced' && saved.beginner.includes(3) && saved.intermediate.includes(4));

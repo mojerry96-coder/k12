@@ -2,7 +2,7 @@
 
 Single-page simulation for lesson MTH12_09_02_01 (Linear Equations and Gradients), built from the Gradient Lab replication pack. Three levels with 7 + 6 missions and unlimited Advanced challenges, plus an opener and a Fitila-led walkthrough. No backend, login or live AI.
 
-**Open:** `index.html`, or serve `dist/` and open its address (`dist/index.html` and `dist/gradient-lab.html` are the same page; keep `dist/media/` beside them). Every launch runs opener → voiced walkthrough → Welcome; both are skippable and saved progress is kept. Read `VALIDATION.md` before release: the Fitila clips await approval and the uLesson logo is still an interim cut-out.
+**Open:** `index.html`, or serve `dist/` and open its address (`dist/index.html` and `dist/gradient-lab.html` are the same page; keep `dist/media/` beside them). Every launch runs opener → voiced walkthrough → Welcome; both are skippable and saved progress is kept. Light mode is the default; the sun/moon button in the header switches to dark and remembers the choice. Read `VALIDATION.md` before release: the Fitila clips await approval and the uLesson logo is still an interim cut-out.
 
 ## Develop
 

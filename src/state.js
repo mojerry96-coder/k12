@@ -18,7 +18,7 @@ export function initialState() {
       example: null, hint: false, inputs: { m: '', c: '', v: '' }, sliders: { m: 0, c: 0 },
       points: 0, solved: 0, streak: 0, bestStreak: 0,
     },
-    prefs: { sound: false, reducedMotion: null, onboardingSeen: false, voice: true },
+    prefs: { sound: false, reducedMotion: null, onboardingSeen: false, voice: true, theme: 'light' },
     session: { completeShown: { beginner: false, intermediate: false }, cueShown: {}, moved: {} },
   };
 }
@@ -85,5 +85,6 @@ export function load(storage) {
   if (typeof p.reducedMotion === 'boolean') s.prefs.reducedMotion = p.reducedMotion;
   if (typeof p.onboardingSeen === 'boolean') s.prefs.onboardingSeen = p.onboardingSeen;
   if (typeof p.voice === 'boolean') s.prefs.voice = p.voice;
+  if (p.theme === 'light' || p.theme === 'dark') s.prefs.theme = p.theme;
   return s;
 }
