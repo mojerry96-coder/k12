@@ -1,5 +1,5 @@
-// In-page end-to-end check of the lesson flow (1 → 2 → 3 → 4 ↔ 5 → 6 → 7 → 8 → 11 → 10) and
-// the checking rules. Runs in the built page; resolves to PASS/FAIL lines.
+// In-page end-to-end check of the lesson flow (1 → 2 → 3 → 4 ↔ 5 → 6 → 7 → 8 → 11 → 9 → 10), the checking
+// rules, guided support, the How to play walkthrough and the admin preview. Runs in the built page; resolves to PASS/FAIL lines.
 (async () => {
   const w = (ms) => new Promise((r) => setTimeout(r, ms));
   const $ = (s) => document.querySelector(s);
@@ -8,6 +8,7 @@
   const type = (id, v) => { const el = $('#' + id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
   const slide = (key, v) => { const el = [...document.querySelectorAll('.slider input')].find((i) => i.getAttribute('aria-label').startsWith(key === 'm' ? 'Gradient' : 'Y-int')); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
   const hash = () => location.hash;
+  try {
 
   location.hash = '#1'; await w(300);
   btn(/^Let’s play/).click(); await w(200);
@@ -22,29 +23,33 @@
   ok('2: sliders redraw the equation', $('#equation').textContent === 'y = 1.5x − 2');
   btn(/Walk the line/).click(); await w(1700);
   ok('2: walking an uphill line moves on to placing B', hash() === '#3');
-  ok('3: Continue hidden until B is placed', $('#confirm-b').hidden);
+  ok('3: B starts in the wrong place, not on the answer', $('#b-label').textContent === 'B (−3, 3)' && !document.querySelector('.ghost-b'));
   const svg = $('#graph svg');
   // place B at (1, 3) by a click at its screen position
   const host = $('#graph'), g = host._g, r = svg.getBoundingClientRect(), k = r.width / (g.box[2] - 6);
   const sx = (gx) => r.left + (g.o[0] - g.box[0] - 3 + gx * g.u[0]) * k, sy = (gy) => r.top + (g.o[1] - g.box[1] - 3 - gy * g.u[1]) * k;
-  svg.dispatchEvent(new PointerEvent('pointerdown', { clientX: sx(1), clientY: sy(3), bubbles: true }));
+  svg.dispatchEvent(new PointerEvent('pointerdown', { clientX: sx(0), clientY: sy(0), bubbles: true }));
+  $('#graph svg').dispatchEvent(new PointerEvent('pointermove', { clientX: sx(1), clientY: sy(3), bubbles: true }));
+  $('#graph svg').dispatchEvent(new PointerEvent('pointerup', { clientX: sx(1), clientY: sy(3), bubbles: true }));
   await w(50);
-  ok('3: clicking the grid places B (snapped)', $('#b-label').textContent === 'B (1, 3)' && !$('#confirm-b').hidden);
+  ok('3: dragging B moves it (snapped to whole numbers)', $('#b-label').textContent === 'B (1, 3)');
   $('#confirm-b').click(); await w(50);
-  ok('3: a wrong B gets "Almost!" and stays', hash() === '#3' && /Move B to \(2, 2\)/.test($('.modal')?.textContent || ''));
+  ok('3: a wrong B gets "Almost!" and stays', hash() === '#3' && /Count from the middle/.test($('.modal')?.textContent || ''));
   $('#modal-button').click();
-  $('#graph svg').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-  $('#graph svg').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  $('#graph').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  $('#graph').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
   ok('3: arrow keys move B', $('#b-label').textContent === 'B (2, 2)');
-  $('#graph svg').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await w(100);
+  $('#graph').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await w(100);
   ok('3: Enter on (2, 2) moves on to the gradient question', hash() === '#4');
+  ok('4: the chips ask "Across ?" and "Up ?" instead of giving the answer', /Across \?/.test($('#scene').textContent) && /Up \?/.test($('#scene').textContent));
+  ok('learners never see level names', !/Beginner|Intermediate|Advanced/.test(document.getElementById('app').textContent));
   btn(/^Check$/).click(); await w(50);
   ok('4: blank answer uses no try and opens no dialog', !$('.modal'));
   type('m-answer', '2'); btn(/^Check$/).click(); await w(50);
   ok('4: wrong answer → Almost!, 2 tries left', /Almost!/.test($('.modal').textContent) && /2 tries left/.test($('.modal').textContent));
   $('#modal-button').click();
-  $('.bubble').click(); await w(100);
-  ok('4: the question bubble opens the hint (screen 5)', hash() === '#5' && /Up ÷ across/.test($('.bubble').textContent));
+  $('.fitila.tappable').click(); await w(100);
+  ok('4: tapping Fitila opens the hint (screen 5)', hash() === '#5' && /Up ÷ across/.test($('.bubble').textContent));
   type('m-answer', '3'); btn(/^Check$/).click(); await w(50);
   ok('5: tries carry over between 4 and 5 (1 try left)', /1 try left/.test($('.modal').textContent));
   $('#modal-button').click();
@@ -67,28 +72,128 @@
   $('#modal-button').click();
   type('y-answer', '3'); btn(/^Check$/).click(); await w(50); $('#modal-button').click(); await w(100);
   ok('8 → 11 (hit both targets)', hash() === '#11');
-  ok('11: starts at 1 / 2', /1 \/ 2/.test($('#hits').textContent));
+  ok('11: starts with no target hit (0 / 2)', /0 \/ 2/.test($('#hits').textContent));
   slide('m', 1); slide('c', -1); await w(50);
   ok('11: m = 1, c = −1 hits both (2 / 2)', /2 \/ 2/.test($('#hits').textContent) && $('#equation').textContent === 'y = x − 1');
   btn(/^Check$/).click(); await w(50); $('#modal-button').click(); await w(100);
-  ok('11 → 10 (activity complete)', hash() === '#10' && /Brilliant work!/.test($('#scene').textContent));
+  ok('11 → 9 (y-intercept), fresh: no answer chosen, no dialog', hash() === '#9' && !$('.modal') && !$('.choice.selected'));
+  [...document.querySelectorAll('.choice')][1].click(); btn(/Check Answer/).click(); await w(50);
+  ok('9: a wrong intercept → Almost!', /Almost!/.test($('.modal').textContent));
+  $('#modal-button').click();
+  [...document.querySelectorAll('.choice')][2].click(); btn(/Check Answer/).click(); await w(50);
+  ok('9: intercept 1 is correct', /You got it!/.test($('.modal').textContent));
+  $('#modal-button').click(); await w(100);
+  ok('9 → 10 (activity complete)', hash() === '#10' && /Brilliant work!/.test($('#scene').textContent));
   let fired = false; addEventListener('gradientlab:complete', () => { fired = true; }, { once: true });
   btn(/Back to lesson/).click(); await w(100);
   ok('10: Back to lesson emits gradientlab:complete and returns to the start', fired && hash() === '#1');
-  // three wrong answers → practise again, never marked correct
-  location.hash = '#8'; await w(200);
-  for (let i = 0; i < 3; i++) { type('y-answer', '9'); btn(/^Check$/).click(); await w(30); if (i < 2) $('#modal-button').click(); }
+  // beginner screens: three wrong answers → practise again, never marked correct
+  location.hash = '#4'; await w(200);
+  for (let i = 0; i < 3; i++) { type('m-answer', '9'); btn(/^Check$/).click(); await w(30); if (i < 2) $('#modal-button').click(); }
   ok('three wrong answers → "Practise again", not success', /Practise again/.test($('.modal').textContent) && !/You got it/.test($('.modal').textContent));
   $('#modal-button').click();
-  ok('practising again restores 3 tries', /3 tries/.test($('#tries').textContent));
+  type('m-answer', '9'); btn(/^Check$/).click(); await w(30);
+  ok('practising again restores 3 tries', /2 tries left/.test($('.modal').textContent));
+  $('#modal-button').click();
   // dialog behaviour
   $('#exit').click(); await w(50);
   ok('Exit opens a confirm dialog; Escape closes it', !!$('.modal') && (document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), !$('.modal')));
-  location.hash = '#9'; await w(200);
-  ok('9: opens with the retry overlay and a wrong choice selected', /Almost!/.test($('.modal').textContent) && $('.choice.selected')?.textContent.includes('1'));
+  // timed bubble: says the task, steps aside, then offers a hint; tapping Fitila gives it
+  location.hash = '#7'; await w(200);
+  ok('7: the instruction shows first', !$('.bubble').classList.contains('away') && /Find the line’s equation/.test($('.bubble').textContent));
+  await w(8600);
+  ok('7: after a few seconds the bubble offers "Tap me for a hint!"', $('.bubble').classList.contains('tip') && /Tap me\s*for a hint!/.test($('.bubble').textContent));
+  await w(4200);
+  ok('7: the hint offer steps aside too', $('.bubble').classList.contains('away'));
+  $('.fitila.tappable').click(); await w(50);
+  ok('7: tapping Fitila opens her hint', /change in y/.test($('.modal')?.textContent || ''));
   $('#modal-button').click();
-  ok('9: Try again clears the selection', !$('.choice.selected'));
-  [...document.querySelectorAll('.choice')][2].click(); btn(/Check Answer/).click(); await w(50);
-  ok('9: intercept 1 is correct', /You got it!/.test($('.modal').textContent));
+  // later screens: 1st wrong → nudge; 2nd → Fitila offers to work through it; 3rd → working, then a fresh question
+  location.hash = '#8'; await w(250);
+  type('y-answer', '9'); btn(/^Check$/).click(); await w(30);
+  ok('8: first wrong answer → the short nudge', /Almost!/.test($('.modal').textContent));
+  $('#modal-button').click();
+  type('y-answer', ''); btn(/^Check$/).click(); await w(30);
+  ok('8: an empty answer uses no try', /2 tries/.test($('#tries').textContent) && !$('.modal'));
+  type('y-answer', '9'); btn(/^Check$/).click(); await w(60);
+  const offer = $('.g-buddy .bubble');
+  ok('8: second wrong answer → Fitila offers "Let’s build this together" in her bubble', !$('.modal') && offer.classList.contains('offer')
+    && /Let’s build this together/.test(offer.textContent) && /Try together/.test(offer.textContent) && /Keep trying/.test(offer.textContent));
+  ok('8: the offer never names a level or a downgrade', !/Beginner|Downgrade|Too difficult/i.test(offer.textContent));
+  [...offer.querySelectorAll('button')].find((b) => /Keep trying/.test(b.textContent)).click(); await w(50);
+  ok('8: Keep trying puts the offer away', offer.classList.contains('away'));
+  type('y-answer', '9'); btn(/^Check$/).click(); await w(30);
+  ok('8: third wrong answer → the answer and its working', /Here’s how it works/.test($('.modal').textContent) && /y = 2 \+ 1 = 3/.test($('.modal').textContent));
+  $('#modal-button').click(); await w(1900);
+  ok('8: then a fresh question of the same kind, with all 3 tries', /\(3, \?\)/.test($('.qcard').textContent) && /3 tries/.test($('#tries').textContent));
+  ok('8: and Fitila offers to try it together again', /fresh one/.test($('.g-buddy .bubble').textContent) && /Try together/.test($('.g-buddy .bubble').textContent));
+  // Try together: guided practice on the same skill, then back to the challenge as it was
+  location.hash = '#6'; await w(250);
+  type('m-answer', '1'); type('c-answer', '0'); btn(/^Check$/).click(); await w(30); $('#modal-button').click();
+  type('m-answer', '2'); type('c-answer', '0'); btn(/^Check$/).click(); await w(60);
+  [...$('.g-buddy .bubble').querySelectorAll('button')].find((b) => /Try together/.test(b.textContent)).click(); await w(200);
+  ok('6: Try together opens guided practice (same screen, nothing reset)', !!$('#guide-bubble') && hash() === '#6' && /Tap the grid to put A at \(0, −2\)/.test($('#guide-bubble').textContent));
+  const tapAt = (gx, gy) => {
+    const s2 = $('#graph svg'), h = $('#graph'), gg = h._g, rr = s2.getBoundingClientRect(), kk = rr.width / (gg.box[2] - 6);
+    s2.dispatchEvent(new PointerEvent('pointerdown', { clientX: rr.left + (gg.o[0] - gg.box[0] - 3 + gx * gg.u[0]) * kk, clientY: rr.top + (gg.o[1] - gg.box[1] - 3 - gy * gg.u[1]) * kk, bubbles: true }));
+  };
+  const pick = async (v) => { await w(80); [...document.querySelectorAll('.choice.pick')].find((b) => b.textContent.trim() === v).click(); await w(700); };
+  tapAt(1, 1); await w(50);
+  ok('guided: a wrong tap just nudges', /Find \(0, −2\)/.test($('#guide-bubble').textContent));
+  tapAt(0, -2); await w(50); tapAt(2, 2); await w(2100);
+  ok('guided: after A and B the line appears through both', !!$('#graph svg line[stroke="var(--orange)"]') && /across/.test($('#guide-bubble').textContent));
+  await pick('2'); await pick('4'); await pick('2');
+  ok('guided: one small step at a time, up to where it crosses the y-axis', /crosses the y-axis/.test($('#guide-bubble').textContent));
+  tapAt(0, -2); await w(2600);
+  const back = [...$('#guide-bubble').querySelectorAll('button')].find((b) => /Back to my challenge/.test(b.textContent));
+  ok('guided: finishing offers the original challenge or a similar one', !!back && /Try a similar one/.test($('#guide-bubble').textContent));
+  back.click(); await w(150);
+  ok('guided: back to the challenge with the answers and tries kept', hash() === '#6' && $('#m-answer').value === '2' && $('#c-answer').value === '0' && /1 try/.test($('#tries').textContent));
+  // How to play: a walkthrough inside the activity that counts nothing and puts everything back
+  location.hash = '#2'; await w(300);
+  $('#help').click(); await w(80);
+  ok('How to play (Line Lab) spotlights the m slider first', !!$('#tour') && /Drag m/.test($('#tour-say').textContent));
+  slide('m', 1); await w(1200);
+  ok('walkthrough: trying the slider moves on to c', /Drag c/.test($('#tour-say').textContent));
+  $('.tour-skip').click(); await w(80);
+  ok('walkthrough: closing restores the screen (y = 0, Walk still hidden)', !$('#tour') && $('#equation').textContent === 'y = 0' && $('#walk').hidden);
+  location.hash = '#3'; await w(300);
+  $('#help').click(); await w(80);
+  ok('walkthrough (place B): place A first', /place A/.test($('#tour-say').textContent));
+  tapAt(-3, 1); await w(1200);
+  ok('walkthrough: then B', /place B/.test($('#tour-say').textContent));
+  tapAt(1, -1); await w(1200);
+  ok('walkthrough: only then does the line appear through both', /line goes through both/.test($('#tour-say').textContent) && !!$('#graph .draw-now'));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await w(80);
+  ok('walkthrough: Escape closes it and B is back where it was', !$('#tour') && $('#b-label').textContent === 'B (−3, 3)');
+  location.hash = '#6'; await w(300);
+  type('m-answer', '4'); type('c-answer', '4'); btn(/^Check$/).click(); await w(30); $('#modal-button').click();
+  $('#help').click(); await w(80); $('.tour-next').click(); await w(80);
+  type('m-answer', '3'); await w(1200);
+  btn(/^Check$/).click(); await w(50);
+  ok('walkthrough: practice typing and Check never use a try', !$('.modal') && /2 tries/.test($('#tries').textContent));
+  $('.tour-close').click(); await w(80);
+  ok('walkthrough: the learner’s own answers come back', $('#m-answer').value === '4' && $('#c-answer').value === '4' && /2 tries/.test($('#tries').textContent));
+  // admin preview: hidden from learners; needs the platform's admin role, not just the shortcut
+  const ctrlM = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', ctrlKey: true, bubbles: true }));
+  location.hash = '#7'; await w(250);
+  ctrlM(); await w(30);
+  ok('admin: Ctrl+M alone opens nothing, and there is no admin button', !$('#admin') && !$('#admin-fab'));
+  dispatchEvent(new CustomEvent('gradientlab:config', { detail: { role: 'admin' } })); await w(30);
+  ok('admin: with the platform’s admin role, an admin button appears (touch)', !!$('#admin-fab'));
+  ctrlM(); await w(30);
+  ok('admin: Ctrl+M opens the panel with the three levels', !!$('#admin') && $('#admin').querySelectorAll('[data-level]').length === 3);
+  $('#admin [data-level="2"]').click(); await w(150);
+  ok('admin: Advanced loads its activity (targets)', hash() === '#11' && !!$('#hits') && !$('#admin'));
+  $('#admin-fab').click(); await w(30);
+  $('#admin [data-level="1"]').click(); await w(150);
+  ok('admin: Intermediate loads its activity (find m and c)', hash() === '#6' && !!$('#m-answer'));
+  $('#admin-fab').click(); await w(30);
+  $('#admin [data-level="0"]').click(); await w(150);
+  ok('admin: Beginner loads its activity (Line Lab)', hash() === '#2' && !!$('.slider'));
+  $('#admin-fab').click(); await w(30);
+  $('#admin .admin-return').click(); await w(150);
+  ok('admin: Return to assigned activity goes back to where the learner was', hash() === '#7' && !$('#admin'));
+  } catch (err) { out.push(`FAIL  threw: ${err.message}\n${err.stack}`); }
   return out.join('\n');
 })();

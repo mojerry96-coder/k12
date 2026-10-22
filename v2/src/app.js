@@ -39,7 +39,43 @@ const GRAPHS = {
   12: { box: [161, 128, 819, 672], o: [533, 465], u: [61.3, 56], range: [-4, 4, -4, 4], dashed: true, ax: [39, 40, 47, 48], labels: 'y', gridIn: true },
 };
 GRAPHS[13] = GRAPHS[6]; GRAPHS[14] = GRAPHS[12];
-const TARGETS = [[2, 1], [-2, -3]];
+let TARGETS = []; // set by the targets screen (and guided practice)
+
+// ---------- levels: assigned by the learning platform, never chosen by the learner ----------
+const LEVELS = [{ name: 'Beginner', screens: [2, 3, 4, 5, 12, 14] }, { name: 'Intermediate', screens: [6, 7, 8, 13] }, { name: 'Advanced', screens: [11, 9] }];
+const params = new URLSearchParams(location.search);
+const levelIndex = (v) => { const i = LEVELS.findIndex((l) => l.name.toLowerCase() === String(v ?? '').toLowerCase()); return i < 0 ? null : i; };
+// Admin tools need the platform to say so (role: 'admin'); on a development host, ?admin stands in for it.
+const DEV_HOST = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|\[::1\])$|\.localhost$|\.test$/.test(location.hostname);
+const platform = { level: levelIndex(window.GradientLabConfig?.level ?? params.get('level')) ?? 0, admin: window.GradientLabConfig?.role === 'admin' || (DEV_HOST && params.has('admin')) };
+const firstScreen = (lv = platform.level) => LEVELS[lv].screens[0];
+let override = null; // an admin previewing another level: { level, back: snapshot of where they were }
+
+// ---------- question sets: the reference question first, then fresh equivalents ----------
+const Q = {
+  6: [{ m: 1, c: 1 }, { m: 2, c: -1 }, { m: -1, c: 2 }],
+  7: [{ A: [-2, -2], B: [2, 2] }, { A: [0, 1], B: [2, 5] }, { A: [-1, 3], B: [1, 1] }],
+  8: [{ m: 1, c: 1, x: 2 }, { m: 2, c: -1, x: 3 }, { m: -1, c: 3, x: 1 }],
+  9: [{ m: 0.5, c: 1, pts: [[4, 3], [10, 6]], choices: [-2, -1, 1, 5] }, { m: 0.5, c: -1, pts: [[4, 1], [10, 4]], choices: [-2, -1, 1, 4] },
+    { m: 0.25, c: 2, pts: [[4, 3], [12, 5]], choices: [-2, 2, 3, 4] }],
+  11: [{ targets: [[2, 1], [-2, -3]], start: [-0.5, 1] }, { targets: [[1, 3], [-1, -1]], start: [-0.5, 0] }, { targets: [[2, 0], [-2, 4]], start: [0.5, 1] }],
+};
+const qv = { 6: 0, 7: 0, 8: 0, 9: 0, 11: 0 };
+const q = (n = page) => Q[n][qv[n] % Q[n].length];
+const lineThrough = (a, b) => { const mv = (b[1] - a[1]) / (b[0] - a[0]); return { m: mv, c: a[1] - mv * a[0] }; };
+// the skill each later screen practises, for guided support
+const SUPPORT = { 6: 'equation', 7: 'equation', 8: 'substitute', 9: 'intercept', 11: 'targets' };
+
+// ---------- Fitila's help when tapped: a hint per screen (4 opens the hint screen, 5 says it again) ----------
+const HINTS = {
+  2: 'Slide m to the right. The bigger m is, the steeper the line climbs.',
+  3: 'Start in the middle at (0, 0). Count 2 squares right, then 2 squares up.',
+  6: 'm is how far the line climbs for each 1 step right. c is where it crosses the y-axis.',
+  7: 'm = change in y ÷ change in x. Then find where the line crosses the y-axis.',
+  8: () => `Put x = ${fmt(q(8).x)} into y = ${exprHTML(q(8).m, q(8).c)}.`,
+  9: 'The y-intercept is where the line crosses the y-axis, where x = 0.',
+  11: 'Get the line through one target first, then change m until it reaches the other.',
+};
 
 // ---------- state ----------
 let page = 1, m = 0, c = 0, pointB = null, attempts = 3, selected = null, walkTimer = 0, modalOpen = null, moved = false;
@@ -157,7 +193,26 @@ function graph(n, opts = {}, into) {
   host.style.setProperty('--ar', `${g.box[2]} / ${g.box[3]}`);
   place(host, g.box, { into, stage: 1, anim: 'frame' });
   drawGraph(opts);
+  // practice taps (guided practice, walkthrough): tap or arrow keys + Enter, snapped to whole numbers
+  host.addEventListener('pointerdown', (e) => { if (host._tap) { e.preventDefault(); host._tap(snapAt(host, e)); } });
+  host.addEventListener('keydown', (e) => {
+    if (!host._tap) return;
+    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key], [x0, x1, y0, y1] = g.range;
+    if (step) {
+      e.preventDefault();
+      const cu = host._cursor || [0, 0];
+      host._cursor = [Math.max(x0, Math.min(x1, cu[0] + step[0])), Math.max(y0, Math.min(y1, cu[1] + step[1]))];
+      drawGraph(host._opts);
+    }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); host._tap(host._cursor || [0, 0]); }
+  });
   return host;
+}
+function snapAt(host, e) {
+  const svg = host.querySelector('svg'), [x0, x1, y0, y1] = host._g.range;
+  const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+  const [gx, gy] = mapping(host._g).toGraph(p.x, p.y);
+  return [Math.max(x0, Math.min(x1, Math.round(gx))), Math.max(y0, Math.min(y1, Math.round(gy)))];
 }
 function mapping(g) {
   const [bx, by, bw, bh] = g.box, inset = 3;
@@ -174,7 +229,7 @@ function drawGraph(o = {}) {
   const [x0, x1, y0, y1] = g.range, step = g.step || 1, [al, ar, at, ab] = g.ax;
   const L = (a, b, cc, d, stroke, width = 2, extra = '') => `<line x1="${a}" y1="${b}" x2="${cc}" y2="${d}" stroke="${stroke}" stroke-width="${width}" ${extra}/>`;
   const drawn = (len) => (intro ? `class="draw" style="--len:${Math.ceil(len)}"` : '');
-  const arrows = (id) => (intro ? '' : `marker-start="url(#${id})" marker-end="url(#${id})"`);
+  const arrows = (id) => (intro || o.lineIn ? '' : `marker-start="url(#${id})" marker-end="url(#${id})"`);
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Coordinate grid${o.m != null ? `, line y equals ${o.m} x plus ${o.c || 0}` : ''}"><defs>
       <marker id="ah" viewBox="0 0 12 12" refX="10" refY="6" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M2 2L10 6L2 10Z" fill="var(--axis)"/></marker>
       <marker id="ahl" viewBox="0 0 12 12" refX="9" refY="6" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20" orient="auto-start-reverse"><path d="M2 1.5L10 6L2 10.5" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
@@ -208,7 +263,8 @@ function drawGraph(o = {}) {
     const uniq = pts.filter((p, i) => pts.findIndex((q) => Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]) < 1e-6) === i).sort((p, q) => p[0] - q[0]);
     if (uniq.length >= 2) {
       const [u, v] = [uniq[0], uniq[uniq.length - 1]];
-      s += L(X(u[0]), Y(u[1]), X(v[0]), Y(v[1]), 'var(--orange)', 4, `stroke-linecap="round" ${arrows('ahl')} ${drawn(Math.hypot(X(v[0]) - X(u[0]), Y(v[1]) - Y(u[1])))}`);
+      const len = Math.hypot(X(v[0]) - X(u[0]), Y(v[1]) - Y(u[1]));
+      s += L(X(u[0]), Y(u[1]), X(v[0]), Y(v[1]), 'var(--orange)', 4, `stroke-linecap="round" ${arrows('ahl')} ${o.lineIn ? `class="draw-now" style="--len:${Math.ceil(len)}"` : drawn(len)}`);
     }
     if (o.ends) for (const xv of [-4, 4]) { const yv = a * xv + b; if (yv >= y0 && yv <= y1) s += `<circle cx="${X(xv)}" cy="${Y(yv)}" r="12" fill="var(--orange)" stroke="#fff" stroke-width="4"/>`; }
   }
@@ -228,11 +284,10 @@ function drawGraph(o = {}) {
   }
   if (o.place) {
     s += pt(dot(-2, -2, '#1EA1E6') + `<text x="${X(-2) - 28}" y="${Y(-2) - 26}" style="fill:#1E9BE0;font-size:30px;font-weight:600">A</text>`);
-    if (pointB) s += `<g class="pt" style="--i:0">${dot(pointB[0], pointB[1], '#7A4BD8')}<text x="${X(pointB[0]) + 22}" y="${Y(pointB[1]) - 22}" style="fill:#7A4BD8;font-size:30px;font-weight:600">B</text></g>`;
-    else s += `<g class="ghost-b"><circle cx="${X(2)}" cy="${Y(2)}" r="30" fill="#EFE6FD" stroke="#B89BEF" stroke-width="2" stroke-dasharray="6 5"/><circle cx="${X(2)}" cy="${Y(2)}" r="17" fill="#C9B2F4" stroke="#A985EE" stroke-width="2"/></g>`;
+    s += `<g class="${first ? 'pt' : ''} drag-b" style="--i:1"><circle cx="${X(pointB[0])}" cy="${Y(pointB[1])}" r="30" fill="#EFE6FD" stroke="#B89BEF" stroke-width="2" stroke-dasharray="6 5"/>${dot(pointB[0], pointB[1], '#7A4BD8')}<text x="${X(pointB[0]) + 22}" y="${Y(pointB[1]) - 26}" style="fill:#7A4BD8;font-size:30px;font-weight:600">B</text></g>`;
   }
   if (o.success) s += pt(dot(-2, -2, '#7547CD'));
-  if (o.wide) s += pt(dot(0, 1, '#5A35B8', 15)) + pt(dot(10, 6, '#5A35B8', 15));
+  if (o.pts) s += o.pts.map(([px, py]) => pt(dot(px, py, '#5A35B8', 15))).join(''); // points on the line, never the intercept itself
   if (o.targets) {
     for (const [tx, ty] of TARGETS) {
       const hit = Math.abs(m * tx + c - ty) < 0.08, col = hit ? '#0FA36C' : '#7A4BD8', halo = hit ? '#D3F1E4' : '#E9DEFC';
@@ -240,39 +295,44 @@ function drawGraph(o = {}) {
       if (hit) s += `<g class="pt" style="--i:0"><circle cx="${X(tx) + 28}" cy="${Y(ty) - 37}" r="15" fill="#0FA36C" stroke="#fff" stroke-width="3"/><path d="M${X(tx) + 21} ${Y(ty) - 37}l5 5 9-10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>`;
     }
   }
+  if (o.draw) s += o.draw({ X, Y, dot, L });
+  if (host._tap && host._cursor) s += `<circle cx="${X(host._cursor[0])}" cy="${Y(host._cursor[1])}" r="24" fill="none" stroke="#FFBD20" stroke-width="4" stroke-dasharray="7 5"/>`;
   s += '</svg>';
   host.innerHTML = s;
   host._drawn = true;
   if (intro) setTimeout(() => { if (host.isConnected && !host._settled) { host._settled = true; drawGraph(host._opts); } }, 1400);
-  if (o.place) wirePlacement(host, M);
+  if (o.place && !host._wired) wirePlacement(host);
 }
 
-// Screen 3: click/tap the grid (or use the arrow keys) to place B; snaps to whole numbers in −4…4.
-function wirePlacement(host, M) {
-  const svg = host.querySelector('svg');
-  svg.setAttribute('tabindex', '0');
-  svg.setAttribute('role', 'application');
-  svg.setAttribute('aria-label', 'Place point B. Click the grid or use the arrow keys; Enter confirms.');
+// Screen 3: drag B, tap the grid, or use the arrow keys; snaps to whole numbers in −4…4.
+function wirePlacement(host) {
+  host._wired = true;
+  host.tabIndex = 0;
+  host.setAttribute('role', 'application');
+  host.setAttribute('aria-label', 'Point B. Drag it, tap the grid, or use the arrow keys; Enter checks.');
   const put = ([px, py]) => {
-    pointB = [Math.max(-4, Math.min(4, px)), Math.max(-4, Math.min(4, py))];
+    const next = [Math.max(-4, Math.min(4, px)), Math.max(-4, Math.min(4, py))];
+    if (next[0] === pointB[0] && next[1] === pointB[1]) return;
+    pointB = next;
     drawGraph({ place: true });
     $('#b-label').textContent = `B (${pointB.map(fmt).join(', ')})`;
     bump($('#b-label').parentElement);
-    const cont = $('#confirm-b');
-    if (cont.hidden) { cont.hidden = false; cont.dataset.in = 'pop'; cont.style.setProperty('--d', '0ms'); }
     announce($('#b-label').textContent);
-    $('#graph svg').focus({ preventScroll: true });
   };
-  svg.addEventListener('pointerdown', (e) => {
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
-    const [gx, gy] = M.toGraph(p.x, p.y);
-    put([Math.round(gx), Math.round(gy)]);
+  host.addEventListener('pointerdown', (e) => {
+    if (host._tap) return; // a walkthrough practice tap, not the learner's B
+    try { host.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
+    host.classList.add('dragging'); put(snapAt(host, e));
   });
-  svg.addEventListener('keydown', (e) => {
+  host.addEventListener('pointermove', (e) => { if (host.classList.contains('dragging') && !host._tap) put(snapAt(host, e)); });
+  const stop = () => host.classList.remove('dragging');
+  host.addEventListener('pointerup', stop);
+  host.addEventListener('pointercancel', stop);
+  host.addEventListener('keydown', (e) => {
+    if (host._tap) return;
     const moves = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
-    const a = pointB || [2, 2];
-    if (moves[e.key]) { e.preventDefault(); put([a[0] + moves[e.key][0], a[1] + moves[e.key][1]]); }
-    if (e.key === 'Enter' && pointB) confirmB();
+    if (moves[e.key]) { e.preventDefault(); put([pointB[0] + moves[e.key][0], pointB[1] + moves[e.key][1]]); }
+    if (e.key === 'Enter') confirmB();
   });
 }
 
@@ -343,6 +403,7 @@ function slider(key, b, { min, max, step, compact = false, filled = false, into,
     if (!moved) { moved = true; onFirst?.(); }
   });
   show(false);
+  input._show = show;
   return input;
 }
 
@@ -410,21 +471,55 @@ document.addEventListener('keydown', (e) => {
 // =====================================================================================
 // Checking
 // =====================================================================================
-function success(message, next) { modal({ title: 'You got it!', body: message, pose: 'success', action: 'Continue', onAction: () => go(next), success: true }); }
-function failure(message, fields = []) {
+function success(message, next) {
+  emit('attempt', { skill: SUPPORT[page] || null, correct: true, attemptsLeft: attempts });
+  modal({ title: 'You got it!', body: message, pose: 'success', action: 'Continue', onAction: () => go(next), success: true }); }
+// A wrong (valid) answer. On the later screens: 1st → a short nudge; 2nd → Fitila offers to work through it
+// together; 3rd → the answer with its working, then a fresh question of the same kind.
+function failure(message, fields = [], working = null) {
   attempts = Math.max(0, attempts - 1);
   renderTries();
   for (const id of fields) { const f = $('#' + id)?.closest('.field'); if (f) { f.classList.remove('wrong'); void f.offsetWidth; f.classList.add('wrong'); } }
+  const skill = SUPPORT[page];
+  emit('attempt', { skill: skill || null, correct: false, attemptsLeft: attempts });
+  if (skill && attempts === 1 && coach) { announce(message); offerSupport(); return; }
+  if (skill && attempts === 0 && working) {
+    modal({ title: 'Here’s how it works', body: working, pose: 'think', action: 'Got it', onAction: () => freshQuestion(true) });
+    return;
+  }
   const out = attempts === 0;
   modal({ title: 'Almost!', body: out ? `${message} Let’s practise this step again.` : message, pose: 'almost',
     action: out ? 'Practise again' : 'Try again', remaining: attempts, onAction: () => { if (out) { attempts = 3; renderTries(); } } });
+}
+const par = (v) => (v < 0 ? `(${fmt(v)})` : fmt(v));
+const WORKING = {
+  6: ({ m: mv, c: cv }) => `The line goes ${mv > 0 ? 'up' : 'down'} ${fmt(Math.abs(mv))} for every 1 step right, so m = ${fmt(mv)}. It crosses the y-axis at ${fmt(cv)}, so c = ${fmt(cv)}.`,
+  7: ({ A, B }) => {
+    const L = lineThrough(A, B);
+    return `From A to B it goes ${B[1] >= A[1] ? 'up' : 'down'} ${fmt(Math.abs(B[1] - A[1]))} and across ${fmt(B[0] - A[0])}, so m = ${fmt(B[1] - A[1])} ÷ ${fmt(B[0] - A[0])} = ${fmt(L.m)}. Then c = y − m × x = ${fmt(A[1])} − ${par(L.m)} × ${par(A[0])} = ${fmt(L.c)}.`;
+  },
+  8: ({ m: mv, c: cv, x }) => `Put x = ${fmt(x)} into y = ${exprHTML(mv, cv)}: y = ${substitution(mv, cv, x)} = ${fmt(mv * x + cv)}.`,
+  9: ({ c: cv }) => `The line crosses the y-axis, where x = 0, at y = ${fmt(cv)}. So the y-intercept is ${fmt(cv)}.`,
+  11: ({ targets }) => {
+    const [a, b] = [...targets].sort((p, r) => p[0] - r[0]), L = lineThrough(a, b);
+    return `From (${a.map(fmt).join(', ')}) to (${b.map(fmt).join(', ')}) the line goes ${b[1] >= a[1] ? 'up' : 'down'} ${fmt(Math.abs(b[1] - a[1]))} and across ${fmt(b[0] - a[0])}, so m = ${fmt(L.m)}. It crosses the y-axis at ${fmt(L.c)}, so c = ${fmt(L.c)}.`;
+  },
+};
+const substitution = (mv, cv, x) => `${mv === 1 ? par(x) : `${fmt(mv)} × ${par(x)}`} ${cv < 0 ? '−' : '+'} ${fmt(Math.abs(cv))}`;
+// after the answer has been shown, carry on with a fresh question of the same kind (full tries again)
+let offerOnArrival = false;
+function freshQuestion(offer) {
+  qv[page] += 1;
+  offerOnArrival = offer;
+  go(page);
 }
 function numeric(id) {
   const raw = ($('#' + id)?.value || '').trim().replace(/[−–]/g, '-');
   if (!raw || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(raw)) return null;
   return Number(raw);
 }
-function check(fields, answers, next, message) {
+function check(fields, answers, next, message, working) {
+  if (tour) return; // the walkthrough never submits answers
   const nums = fields.map(numeric);
   const bad = nums.findIndex((v) => v === null || !Number.isFinite(v));
   if (bad >= 0) { // blank or not a number: no try used, just a nudge
@@ -434,12 +529,12 @@ function check(fields, answers, next, message) {
   }
   if (nums.every((v, i) => Math.abs(v - answers[i]) < 1e-6)) return success(message, next);
   const cRight = fields.includes('c-answer') && Math.abs(nums[0] - answers[0]) < 1e-6;
-  failure(cRight ? 'Check where the line crosses the y-axis.' : 'Check the rise and run, then try again.', cRight ? ['c-answer'] : fields);
+  failure(cRight ? 'Check where the line crosses the y-axis.' : 'Check the rise and run, then try again.', cRight ? ['c-answer'] : fields, working);
 }
 function confirmB() {
-  if (!pointB) return;
+  if (tour) return;
   if (pointB[0] === 2 && pointB[1] === 2) go(4);
-  else modal({ title: 'Almost!', body: 'Move B to (2, 2).', pose: 'almost', action: 'Try again' });
+  else modal({ title: 'Almost!', body: `B is at (${pointB.map(fmt).join(', ')}). Count from the middle to find (2, 2).`, pose: 'almost', action: 'Try again' });
 }
 const hitCount = () => TARGETS.filter(([x, y]) => Math.abs(m * x + c - y) < 0.08).length;
 function updateHits() {
@@ -454,28 +549,145 @@ function updateHits() {
 }
 
 // =====================================================================================
-// Navigation
+// Fitila's bubble: says the task for a few seconds, steps aside, offers "Tap me for a hint!",
+// and offers it again whenever the learner has been still for a while. After a second wrong
+// answer it offers to work through the idea together instead.
 // =====================================================================================
-function go(n) {
+const SAY_MS = 6500, TIP_MS = 4000, IDLE_MS = 14000;
+let coach = null;
+function coachStop() {
+  if (!coach) return;
+  coach.timers.forEach(clearTimeout);
+  clearTimeout(coach.idle);
+  coach = null;
+}
+function coachStart({ quiet = false } = {}) {
+  coachStop();
+  const b = $('.g-buddy .bubble', scene), f = $('.g-buddy .fitila', scene);
+  if (!b) return;
+  const t = b.querySelector('.bubble-text');
+  coach = { b, f, say: t.innerHTML, text: t.textContent.replace(/\s+/g, ' ').trim(), timers: [], idle: 0, offered: false, offering: false };
+  const entry = quiet ? 0 : parseFloat(b.style.getPropertyValue('--d')) || 0;
+  if (quiet) { b.classList.add('away'); bubbleSay(words('Your turn!')); coachLater(bubbleAway, 2600); }
+  else if (!offerOnArrival) coachLater(bubbleAway, entry + SAY_MS);
+  b.addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'together') { e.stopPropagation(); startGuided(); }
+    else if (act === 'keep') { e.stopPropagation(); coach.offering = false; emit('support', { skill: SUPPORT[page], choice: 'keep-trying' }); bubbleAway(); armIdle(); }
+    else if (b.classList.contains('tip')) helpMe();
+  });
+  if (!f || !(HINTS[page] || page === 4 || page === 5)) return;
+  f.classList.add('tappable');
+  f.setAttribute('role', 'button');
+  f.tabIndex = 0;
+  f.setAttribute('aria-label', `Fitila says: ${coach.text} Tap her for a hint.`);
+  f.addEventListener('click', helpMe);
+  f.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); helpMe(); } });
+  if (offerOnArrival) { offerOnArrival = false; coachLater(() => offerSupport(true), entry + 700); return; }
+  coachLater(offerHelp, entry + SAY_MS + 900);
+}
+function coachLater(fn, ms) { const c0 = coach; c0.timers.push(setTimeout(() => { if (coach === c0) fn(); }, ms)); }
+function armIdle() {
+  if (!coach?.f?.classList.contains('tappable')) return;
+  clearTimeout(coach.idle);
+  const c0 = coach;
+  coach.idle = setTimeout(() => { if (coach === c0) offerHelp(); }, IDLE_MS);
+}
+['pointerdown', 'keydown', 'input'].forEach((t) => addEventListener(t, () => armIdle(), true));
+function bubbleSay(html, cls) {
+  const { b } = coach;
+  b.querySelector('.bubble-text').innerHTML = html;
+  b.classList.remove('away', 'again', 'tip', 'offer');
+  if (cls) b.classList.add(cls);
+  void b.offsetWidth;
+  b.classList.add('again');
+}
+function bubbleAway() { if (!coach) return; coach.b.classList.remove('again'); coach.b.classList.add('away'); }
+function offerHelp() {
+  if (!coach) return;
+  const { b, f } = coach;
+  // never talk over a dialog, the walkthrough, a hidden tab, the instruction or an open offer
+  if (modalOpen || tour || document.hidden || coach.offering || !b.classList.contains('away')) { armIdle(); return; }
+  bubbleSay(`${words('Tap me')}<br>${words('for a hint!', 2)}`, 'tip');
+  f.classList.remove('hey'); void f.offsetWidth; f.classList.add('hey');
+  if (!coach.offered) { coach.offered = true; announce('Tap Fitila for a hint.'); }
+  coachLater(bubbleAway, TIP_MS);
+  armIdle();
+}
+function helpMe() {
+  if (!coach || tour) return;
+  if (coach.offering) return; // her offer is already showing
+  bubbleAway();
+  if (page === 4) { go(5); return; }
+  if (page === 5) { bubbleSay(coach.say); coachLater(bubbleAway, SAY_MS + 4000); return; } // the hint itself, said again
+  const h = HINTS[page];
+  modal({ title: coach.text, body: typeof h === 'function' ? h() : h, pose: 'think', action: 'Got it' });
+}
+// "Let's build this together": stays until the learner chooses, so it never times out on them
+function offerSupport(fresh = false) {
+  if (!coach) return;
+  coach.timers.forEach(clearTimeout); coach.timers = [];
+  coach.offering = true;
+  const first = fresh ? 'Here’s a fresh one.' : 'Let’s build this together.';
+  bubbleSay(`${words(first)} ${words('Want to try it step by step?', 4)}<span class="offer-acts"><button type="button" class="btn small" data-act="together">Try together</button><button type="button" class="btn small outline" data-act="keep">Keep trying</button></span>`, 'offer');
+  const { f } = coach;
+  f.classList.remove('hey'); void f.offsetWidth; f.classList.add('hey');
+  announce(`Fitila: ${first} Want to try it step by step? Try together, or keep trying.`);
+  emit('support-offered', { skill: SUPPORT[page], attemptsLeft: attempts, freshQuestion: fresh });
+}
+
+// =====================================================================================
+// Navigation, and saving/restoring a screen's work (for guided practice, the walkthrough and admin preview)
+// =====================================================================================
+function snapshot() {
+  return { page, attempts, m, c, selected, moved, pointB: pointB && [...pointB], qv: qv[page],
+    fields: Object.fromEntries($$('input[type=text]', scene).map((i) => [i.id, i.value])) };
+}
+function restoreState(s) {
+  attempts = s.attempts; renderTries();
+  for (const [id, v] of Object.entries(s.fields)) { const el = $('#' + id); if (el) el.value = v; }
+  if (s.selected != null) { selected = s.selected; $$('.choice', scene)[selected]?.classList.add('selected'); }
+  if (s.pointB && $('#b-label')) { pointB = s.pointB; drawGraph({ place: true }); $('#b-label').textContent = `B (${pointB.map(fmt).join(', ')})`; }
+  const sliders = $$('.slider input', scene);
+  if (sliders.length) {
+    m = s.m; c = s.c;
+    for (const input of sliders) { input.value = input.getAttribute('aria-label').startsWith('Gradient') ? m : c; input._show(false); }
+    drawGraph({ ...$('#graph')._opts, m, c }); updateEquation(); updateHits();
+    if (s.moved) { moved = true; const w = $('#walk'); if (w) { w.hidden = false; w.classList.add('cta'); } }
+  }
+}
+function go(n, { restore = null, quiet = false } = {}) {
   clearInterval(walkTimer);
+  coachStop();
+  if (tour) endTour(false, false);
+  guided = null;
   closeModal(false);
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
   $('#audio').setAttribute('aria-pressed', 'false');
   const keepTries = [4, 5].includes(page) && [4, 5].includes(n);
   page = n;
+  if (restore && qv[n] != null) qv[n] = restore.qv;
   if (!keepTries) attempts = 3;
-  pointB = null; selected = null; moved = false; stageCount = {};
+  pointB = null; selected = null; moved = false;
+  if (location.hash !== '#' + n) history.replaceState(null, '', '#' + n);
+  paint(() => PAGES[n](), quiet);
+  if (restore) restoreState(restore);
+  coachStart({ quiet });
+  armIdle();
+  $('#help').hidden = !TOURS[n];
+  if (!quiet) announce(`Screen ${n}`);
+}
+// builds a screen into the scene; quiet = no entrance (coming back to work already in progress)
+function paint(build, quiet = false) {
+  stageCount = {};
   scene.classList.remove('enter');
   scene.innerHTML = '';
-  if (location.hash !== '#' + n) history.replaceState(null, '', '#' + n);
-  PAGES[n]();
-  void scene.offsetWidth;
-  scene.classList.add('enter');
+  build();
+  if (!quiet) { void scene.offsetWidth; scene.classList.add('enter'); }
   $$('input[type=text]', scene).forEach((el) => el.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $$('button', scene).find((b) => /^Check/.test(b.textContent.trim()))?.click();
   }));
   scrollTo(0, 0);
-  announce(`Screen ${n}`);
 }
 
 // =====================================================================================
@@ -495,8 +707,8 @@ function renderWelcome() {
   const letters = [...'Gradient Lab'].map((ch, i) => (ch === ' ' ? ' ' : `<span class="ch" style="--i:${i}">${ch}</span>`)).join('');
   text(`<span class="title-letters">${letters}</span>`, [618, 262, 790, null], 158, { into: top, style: 'color:#0B2C4C;letter-spacing:-1px;-webkit-text-stroke:.05em #0B2C4C;text-shadow:0 0 8px #fff,0 0 14px #fff;white-space:nowrap', anim: '' });
   text('Let’s make some lines!', [750, 438, 620, null], 66, { into: top, style: 'color:#0B2C4C;white-space:nowrap', stage: 2 });
-  button(`Let’s play ${ICON.arrowR}`, [751, 557, 493, 92], () => go(2), { cls: 'cta', into: ctl, pw: 560 }).style.cssText += 'font-size:calc(var(--u)*38);--iw:44';
-  button('How to play', [842, 692, 313, 70], () => modal({ title: 'How to play', body: 'Move the sliders, place points, and use up ÷ across to find the gradient.', pose: 'point', action: 'Let’s play', onAction: () => go(2) }), { cls: 'outline', into: ctl, pw: 400 });
+  button(`Let’s play ${ICON.arrowR}`, [751, 557, 493, 92], () => go(firstScreen()), { cls: 'cta', into: ctl, pw: 560 }).style.cssText += 'font-size:calc(var(--u)*38);--iw:44';
+  button('How to play', [842, 692, 313, 70], () => { go(firstScreen()); setTimeout(() => { if (!modalOpen && !tour) startTour(); }, reduced() ? 200 : 1700); }, { cls: 'outline', into: ctl, pw: 400 });
 }
 
 function renderLineLab() {
@@ -507,6 +719,7 @@ function renderLineLab() {
   fitila('point', undefined, { into: buddy });
   bubble(['Make the line climb!'], [1183, 235, 362, 106], 44, [1338, 330, 1347, 378], { into: buddy });
   const walk = button(`${ICON.walk} Walk the line`, [1302, 785, 308, 80], () => {
+    if (tour) return;
     if (m <= 0) { modal({ title: 'Make it climb!', body: 'Move m above zero so the line rises from left to right.', pose: 'point', action: 'Try again' }); return; }
     walkLine();
   }, { into: ctl, anim: '', pw: 560 });
@@ -535,20 +748,21 @@ function walkLine() {
 
 function renderPlace() {
   const board = group('board'), buddy = group('buddy'), row = group('row'), ctl = group('controls');
+  pointB = [-3, 3]; // B starts in the wrong place: the learner finds (2, 2) on the grid
   graph(3, { place: true }, board);
   fitila('side', undefined, { into: buddy });
-  bubble(['Now place B'], [1037, 306, 276, 114], 48, [1286, 392, 1325, 428], { into: buddy });
+  bubble(['Move B', 'to (2, 2)'], [1037, 296, 276, 134], 44, [1286, 392, 1325, 428], { into: buddy });
   const bulb = place(make('button', 'round', ICON.bulb), [1516, 404, 80, 80], { into: buddy, stage: 2, anim: 'pop', delay: STAGE_AT[2] + 700 });
   bulb.style.cssText += 'background:#FFE36A;border-color:#F2C935;color:#B58600;';
   bulb.setAttribute('aria-label', 'Show a hint for placing point B');
-  bulb.addEventListener('click', () => modal({ title: 'Place point B', body: 'Move two units right and two units up from the origin.', pose: 'think', action: 'Try it' }));
+  bulb.addEventListener('click', () => modal({ title: 'Move B to (2, 2)', body: HINTS[3], pose: 'think', action: 'Got it' }));
   place(make('div', 'chip-point a', '<span class="dot"></span>A (−2, −2)'), [1020, 570, 223, 71], { into: row, anim: 'pop', pw: 300 });
-  place(make('div', 'chip-point b', '<span class="dot"></span><span id="b-label">B (?, ?)</span>'), [1020, 662, 223, 71], { into: row, anim: 'pop', pw: 300 });
+  place(make('div', 'chip-point b', '<span class="dot"></span><span id="b-label">B (−3, 3)</span>'), [1020, 662, 223, 71], { into: row, anim: 'pop', pw: 300 });
   const reset = place(make('button', 'round', ICON.reset), [279, 853, 68, 68], { into: ctl, stage: 4, anim: 'pop' });
   reset.setAttribute('aria-label', 'Reset point B');
   reset.addEventListener('click', () => go(3));
-  const cont = button('Continue', [1020, 790, 223, 70], confirmB, { into: ctl, anim: '', pw: 400 });
-  cont.id = 'confirm-b'; cont.hidden = true; cont.style.fontSize = 'calc(var(--u) * 27)'; cont.classList.add('cta');
+  const cont = button('Check', [1020, 790, 223, 70], confirmB, { into: ctl, stage: 4, pw: 400 });
+  cont.id = 'confirm-b'; cont.style.fontSize = 'calc(var(--u) * 27)';
 }
 
 function renderGradient(hint) {
@@ -561,7 +775,7 @@ function renderGradient(hint) {
       <g class="sparkle"><path d="M1534 380a26 26 0 0 1 16 47c-3 3-4 6-4 9v6h-22v-6c0-3-2-6-4-9a26 26 0 0 1 14-47z" fill="#FFE04D" stroke="#F2BE16" stroke-width="3"/><rect x="1523" y="444" width="24" height="14" rx="4" fill="#C9C9C9"/></g>`, buddy, 2);
     const b = bubble(['What’s the gradient?'], [1060, 182, 428, 214], 48, [1300, 386, 1336, 446],
       { into: buddy, extra: `<div style="margin-top:calc(var(--u)*14)"><span class="hintpill"><span style="color:#E2B007;display:grid">${ICON.bulb}</span>Up ÷ across</span></div><button class="hintlink" id="hide-hint" type="button">Hide hint</button>` });
-    b.querySelector('#hide-hint').addEventListener('click', () => go(4));
+    b.addEventListener('click', (e) => { if (e.target.closest('#hide-hint')) go(4); }); // the bubble is re-said, so delegate
     place(make('div', 'measure across', `<span>Across</span><b>4</b><span style="color:#1C8FD8;display:grid">${ICON.arrowR}</span>`), [273, 777, 283, 93], { into: under, anim: 'rise', pw: 300 });
     place(make('div', 'measure up', `<span>Up</span><b>4</b><span style="color:#129A63;display:grid">${ICON.arrowUp}</span>`), [575, 777, 250, 93], { into: under, anim: 'rise', pw: 280 });
     field('m-answer', 'm =', [846, 779, 213, 90], 'tight', '', { into: ctl, pw: 400 });
@@ -577,15 +791,16 @@ function renderGradient(hint) {
     b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(5); } });
     field('m-answer', 'm =', [1064, 592, 311, 93], '', '', { into: ctl, pw: 480 });
     button('Check', [1064, 702, 312, 62], checkIt, { into: ctl, pw: 480 });
-    place(make('div', 'pill blue', `<span style="color:#1C9BE6;display:grid">${ICON.arrowR}</span>Across 4`), [341, 794, 262, 78], { into: under, stage: 4, anim: 'pop', pw: 290 });
-    place(make('div', 'pill green', `<span style="color:#17A56C;display:grid">${ICON.arrowUp}</span>Up 4`), [620, 794, 261, 78], { into: under, stage: 4, anim: 'pop', pw: 290 });
+    place(make('div', 'pill blue', `<span style="color:#1C9BE6;display:grid">${ICON.arrowR}</span>Across <b class="ask">?</b>`), [341, 794, 262, 78], { into: under, stage: 4, anim: 'pop', pw: 290 });
+    place(make('div', 'pill green', `<span style="color:#17A56C;display:grid">${ICON.arrowUp}</span>Up <b class="ask">?</b>`), [620, 794, 261, 78], { into: under, stage: 4, anim: 'pop', pw: 290 });
   }
 }
 
 function renderMC(feedback) {
   const board = group('board'), buddy = group('buddy'), row = group('row'), ctl = group('controls');
-  graph(feedback ? 13 : 6, { m: 1, c: 1 }, board);
-  const checkIt = () => check(['m-answer', 'c-answer'], [1, 1], 7, 'm = 1, c = 1');
+  const Qn = feedback ? Q[6][0] : q(6);
+  graph(feedback ? 13 : 6, { m: Qn.m, c: Qn.c }, board);
+  const checkIt = () => check(['m-answer', 'c-answer'], [Qn.m, Qn.c], 7, `m = ${fmt(Qn.m)}, c = ${fmt(Qn.c)}`, WORKING[6](Qn));
   if (!feedback) {
     fitila('wingwave', undefined, { into: buddy });
     burst(1378, 318, '#F5C400', [235, 270], 28, 12, 7, buddy);
@@ -611,35 +826,38 @@ function renderCoordinates() {
   deco('<path d="M628 383Q720 330 808 378" stroke="#CBD5DF" stroke-width="7" stroke-linecap="round" fill="none" stroke-dasharray="12 16"/>', cards);
   burst(372, 262, '#3EA9EC', [200, 245], 28, 12, 7, cards);
   burst(1046, 262, '#7A55D6', [-20, -65], 28, 12, 7, cards);
-  place(make('div', 'coord', '<span class="badge">A</span>(−2, −2)'), [360, 274, 264, 214], { into: cards, stage: 1, anim: 'rise', pw: 380 });
-  place(make('div', 'coord purple', '<span class="badge">B</span>(2, 2)'), [811, 270, 254, 216], { into: cards, stage: 1, anim: 'rise', pw: 380 });
+  const Qc = q(7), L = lineThrough(Qc.A, Qc.B), P = (p) => `(${p.map(fmt).join(', ')})`;
+  place(make('div', 'coord', `<span class="badge">A</span>${P(Qc.A)}`), [360, 274, 264, 214], { into: cards, stage: 1, anim: 'rise', pw: 380 });
+  place(make('div', 'coord purple', `<span class="badge">B</span>${P(Qc.B)}`), [811, 270, 254, 216], { into: cards, stage: 1, anim: 'rise', pw: 380 });
   field('m-answer', 'm', [372, 569, 309, 112], 'cream', '', { into: fields, pw: 380 });
   field('c-answer', 'c', [765, 569, 310, 112], 'cream', '', { into: fields, pw: 380 });
-  button('Check Answer', [518, 720, 403, 76], () => check(['m-answer', 'c-answer'], [1, 0], 8, 'm = 1, c = 0'), { into: ctl, pw: 560 });
+  button('Check Answer', [518, 720, 403, 76], () => check(['m-answer', 'c-answer'], [L.m, L.c], 8, `m = ${fmt(L.m)}, c = ${fmt(L.c)}`, WORKING[7](Qc)), { into: ctl, pw: 560 });
   tries([945, 748, 120, null], { into: ctl, dots: false, cls: 'inline' });
 }
 
 function renderMissing() {
-  m = 1; c = 1;
+  const Qm = q(8), y = Qm.m * Qm.x + Qm.c;
+  m = Qm.m; c = Qm.c;
   const board = group('board'), buddy = group('buddy'), ctl = group('controls');
   equation([417, 115, 239, 70], 'peach', board);
   graph(8, { m, c }, board);
   fitila('puzzled', undefined, { into: buddy });
   text('?', [1520, 322, 70, null], 96, { into: buddy, stage: 2, anim: 'pop', style: 'color:#F5A21B;font-weight:700;text-shadow:0 3px 0 #E07B12;transform:rotate(12deg)' });
   bubble(['Find the missing number.'], [939, 195, 528, 122], 52, [1338, 308, 1378, 372], { into: buddy });
-  place(make('div', 'qcard', '<span>(2, <span class="q">?</span>)</span>'), [998, 404, 260, 144], { into: ctl, anim: 'pop', pw: 380 });
+  place(make('div', 'qcard', `<span>(${fmt(Qm.x)}, <span class="q">?</span>)</span>`), [998, 404, 260, 144], { into: ctl, anim: 'pop', pw: 380 });
   field('y-answer', 'y =', [946, 584, 363, 97], 'soft', '', { into: ctl, pw: 480 });
-  button('Check', [946, 705, 364, 66], () => check(['y-answer'], [3], 11, '2 + 1 = 3'), { into: ctl, pw: 480 });
+  button('Check', [946, 705, 364, 66], () => check(['y-answer'], [y], 11, `${substitution(Qm.m, Qm.c, Qm.x)} = ${fmt(y)}`, WORKING[8](Qm)), { into: ctl, pw: 480 });
   tries([1046, 790, 164, null], { into: ctl, dots: false });
 }
 
 function renderIntercept() {
   const board = group('board'), buddy = group('buddy'), choices = group('choices'), row = group('row'), ctl = group('controls');
-  graph(9, { m: 0.5, c: 1, wide: true }, board);
+  const Qi = q(9);
+  graph(9, { m: Qi.m, c: Qi.c, pts: Qi.pts }, board);
   const t = POSE.think;
   fitila('think', [1297, 355, Math.round((350 * t[2]) / t[3]), 350], { into: buddy });
   bubble(['What is the y-intercept', 'of this line?'], [1203, 195, 344, 135], 35, [1330, 320, 1352, 358], { into: buddy });
-  const values = [-2, -1, 1, 5];
+  const values = Qi.choices;
   values.forEach((v, i) => {
     const b = place(make('button', 'choice', `<span class="letter">${'ABCD'[i]}</span>${fmt(v)}<span class="tick">${ICON.check.replace('#fff', '#C94A10')}</span>`),
       [[148, 503, 853, 1204][i], 733, [320, 316, 315, 320][i], 72], { into: choices, anim: 'rise' });
@@ -652,16 +870,11 @@ function renderIntercept() {
   const ask = button(`${ICON.pencil}Ask Fitila`, [261, 834, 204, 64], () => modal({ title: 'Find the crossing', body: 'Follow the vertical y-axis up to the orange line.', pose: 'think', action: 'Try again' }), { cls: 'sky', into: row, stage: 4, pw: 280 });
   ask.style.cssText += 'font-size:calc(var(--u)*28);gap:calc(var(--u)*10);--iw:34';
   button('Check Answer', [1327, 834, 270, 62], () => {
+    if (tour) return;
     if (selected === null) { announce('Choose an answer first.'); return; }
-    if (values[selected] === 1) success('The y-intercept is 1.', 10);
-    else failure('Check where the line crosses y.');
+    if (values[selected] === Qi.c) success(`The y-intercept is ${fmt(Qi.c)}.`, 10);
+    else { failure('Check where the line crosses y.', [], WORKING[9](Qi)); selected = null; $$('.choice', scene).forEach((x) => x.classList.remove('selected')); }
   }, { into: ctl, stage: 4, pw: 560 }).style.fontSize = 'calc(var(--u) * 24)';
-  // the reference state: a wrong answer chosen, the retry overlay showing
-  selected = 1;
-  $$('.choice', scene)[selected].classList.add('selected');
-  attempts = 2;
-  modal({ title: 'Almost!', body: 'Check where the line crosses y.', pose: 'almost', action: 'Try again', remaining: 2,
-    onAction: () => { selected = null; $$('.choice', scene).forEach((b) => b.classList.remove('selected')); } });
 }
 
 function renderComplete() {
@@ -675,12 +888,14 @@ function renderComplete() {
   const t = text(`<span class="title-letters">${letters}</span>`, [500, 580, 675, null], 100, { into: top, anim: '', style: 'text-align:center;color:#0B2C4C;white-space:nowrap' });
   t.style.setProperty('--d', `${STAGE_AT[2]}ms`);
   place(make('div', 'done-line', `<i>${ICON.check}</i>Activity complete`), [600, 690, 480, 46], { into: top, anim: 'pop', pw: 480 });
-  button('Back to lesson', [669, 776, 336, 66], () => { window.dispatchEvent(new CustomEvent('gradientlab:complete', { detail: { completed: true } })); go(1); }, { into: ctl, pw: 480 }).style.fontSize = 'calc(var(--u) * 24)';
+  button('Back to lesson', [669, 776, 336, 66], () => { emit('complete', { completed: true }); go(1); }, { into: ctl, pw: 480 }).style.fontSize = 'calc(var(--u) * 24)';
   setTimeout(() => { if (page === 10) confetti(innerWidth / 2, innerHeight * 0.4); }, 700);
 }
 
 function renderTargets() {
-  m = 0.5; c = 0;
+  const Qt = q(11);
+  TARGETS = Qt.targets;
+  [m, c] = Qt.start; // a line that misses both targets
   const board = group('board'), buddy = group('buddy'), ctl = group('controls');
   equation([559, 102, 251, 52], 'peach orange-text', board);
   graph(11, { m, c, targets: true }, board);
@@ -692,7 +907,11 @@ function renderTargets() {
   h.id = 'hits';
   h.setAttribute('role', 'status');
   updateHits();
-  button('Check', [1022, 822, 350, 66], () => (hitCount() === 2 ? success('Both targets hit!', 10) : failure('Move m and c until the line passes through both targets.')), { into: ctl, pw: 540 });
+  button('Check', [1022, 822, 350, 66], () => {
+    if (tour) return;
+    if (hitCount() === 2) success('Both targets hit!', 9);
+    else failure('Move m and c until the line passes through both targets.', [], WORKING[11](Qt));
+  }, { into: ctl, pw: 540 });
 }
 
 function renderSuccess(single) {
@@ -709,18 +928,498 @@ const PAGES = { 1: renderWelcome, 2: renderLineLab, 3: renderPlace, 4: () => ren
   6: () => renderMC(false), 7: renderCoordinates, 8: renderMissing, 9: renderIntercept, 10: renderComplete, 11: renderTargets,
   12: () => renderSuccess(false), 13: () => renderMC(true), 14: () => renderSuccess(true) };
 
+// =====================================================================================
+// Guided practice ("Try together"): the same skill on a simpler example, one small action at a
+// time. The challenge — answers typed, tries left, sliders — is saved and comes back untouched.
+// =====================================================================================
+GRAPHS.guide = { ...GRAPHS[6] };
+let guided = null;
+const sleep = (ms) => new Promise((r) => setTimeout(r, reduced() ? Math.min(ms, 250) : ms));
+const same = (p, r) => p[0] === r[0] && p[1] === r[1];
+const P = (p) => `(${p.map(fmt).join(', ')})`;
+// three numbers to pick from, the right one not always in the same place
+const around = (v) => { const o = [v - 1, v, v + 1], k = Math.abs(Math.round(v * 2)) % 3; return [...o.slice(k), ...o.slice(0, k)]; };
+// worked examples per skill; one is picked that differs from the learner's live question
+const EXAMPLES = {
+  equation: [{ A: [-1, 1], B: [1, 3] }, { A: [0, -2], B: [2, 2] }, { A: [0, 3], B: [2, 1] }],
+  substitute: [{ m: 2, c: 1, x: 1 }, { m: 1, c: 2, x: 2 }, { m: 3, c: -1, x: 1 }],
+  intercept: [{ m: 1, c: 2 }, { m: 2, c: -1 }, { m: -1, c: 1 }],
+  targets: [{ t: [[0, 1], [1, 3]] }, { t: [[0, -1], [2, 3]] }, { t: [[0, 2], [2, 0]] }],
+};
+function pickExample(skill) {
+  const live = q(), key = {
+    equation: (e) => lineThrough(e.A, e.B).m, substitute: (e) => `${e.m},${e.c}`, intercept: (e) => e.c, targets: (e) => lineThrough(...e.t).m,
+  }[skill];
+  const liveKey = { equation: page === 7 ? lineThrough(live.A ?? [0, 0], live.B ?? [1, 1]).m : live.m, substitute: `${live.m},${live.c}`, intercept: live.c,
+    targets: live.targets ? lineThrough(...live.targets).m : null }[skill];
+  const list = EXAMPLES[skill];
+  return list.find((e, i) => i >= qv[page] % list.length && key(e) !== liveKey) || list.find((e) => key(e) !== liveKey) || list[0];
+}
+function startGuided() {
+  const skill = SUPPORT[page];
+  if (!skill || guided || tour) return;
+  emit('support', { skill, choice: 'try-together', attemptsLeft: attempts });
+  const g = { skill, from: snapshot(), done: false };
+  coachStop();
+  closeModal(false);
+  guided = g;
+  let ui;
+  paint(() => { ui = guidedStage(); });
+  $('#help').hidden = true;
+  GUIDED[skill](g, ui, pickExample(skill));
+}
+function guidedStage() {
+  const board = group('board'), buddy = group('buddy'), row = group('row'), ctl = group('controls');
+  graph('guide', {}, board);
+  fitila('point', undefined, { into: buddy });
+  const b = bubble(['Let’s build it together!'], [905, 196, 560, 150], 38, [1300, 346, 1336, 392], { into: buddy });
+  b.id = 'guide-bubble';
+  b.classList.add('guide');
+  b.addEventListener('click', (e) => { const a = e.target.closest('[data-act]')?.dataset.act; if (a) endGuided(a); });
+  const back = button('Back to my challenge', [905, 806, 340, 64], () => endGuided('back'), { cls: 'outline', into: ctl, stage: 4, pw: 480 });
+  back.id = 'guide-back';
+  back.style.fontSize = 'calc(var(--u) * 24)';
+  return { row, ctl };
+}
+const alive = (g) => guided === g;
+function gsay(text) {
+  const b = $('#guide-bubble');
+  if (!b) return;
+  b.querySelector('.bubble-text').innerHTML = words(text);
+  b.classList.remove('again'); void b.offsetWidth; b.classList.add('again');
+  announce(text);
+}
+function gopts(o) { const host = $('#graph'); host._opts = { ...host._opts, ...o }; drawGraph(host._opts); }
+// wait for a tap (or arrow keys + Enter) on a grid point the step asks for
+function tapGraph(accept, nudge) {
+  const host = $('#graph');
+  host.tabIndex = 0;
+  host.setAttribute('role', 'application');
+  host.setAttribute('aria-label', 'Grid. Tap a point, or move with the arrow keys and press Enter.');
+  host.classList.add('tapping');
+  return new Promise((res) => {
+    let misses = 0;
+    host._tap = (p) => {
+      if (accept(p)) { host._tap = null; host._cursor = null; host.classList.remove('tapping'); res(p); return; }
+      misses += 1; bump(host);
+      if (nudge) gsay(nudge(p, misses));
+    };
+  });
+}
+// three number buttons; only the right one moves on (a wrong pick costs nothing)
+function choose(row, options, right, nudge) {
+  row.innerHTML = '';
+  return new Promise((res) => {
+    options.forEach((v, i) => {
+      const b = place(make('button', 'choice pick', fmt(v)), [905 + i * 104, 432, 92, 84], { into: row, anim: 'pop', delay: i * 70 });
+      b.type = 'button';
+      b.setAttribute('aria-label', fmt(v));
+      b.addEventListener('click', () => {
+        if (Math.abs(v - right) < 1e-9) { b.classList.add('selected'); setTimeout(() => { row.innerHTML = ''; res(v); }, reduced() ? 0 : 520); }
+        else { b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); if (nudge) gsay(nudge); }
+      });
+    });
+    row.querySelector('button')?.focus({ preventScroll: true });
+  });
+}
+const label = (X, Y, p, text, col) => `<text x="${X(p[0]) + 20}" y="${Y(p[1]) - 22}" style="fill:${col};font-size:30px;font-weight:700">${text}</text>`;
+const arrowLine = (X, Y, a, b, col, n) => `<line class="dash-in" x1="${X(a[0])}" y1="${Y(a[1])}" x2="${X(b[0])}" y2="${Y(b[1])}" stroke="${col}" stroke-width="4" stroke-dasharray="11 9" stroke-linecap="round"/>`
+  + (n != null ? `<g class="pt-now"><rect x="${(X(a[0]) + X(b[0])) / 2 - 22}" y="${(Y(a[1]) + Y(b[1])) / 2 - 20}" width="44" height="40" rx="9" fill="#fff" stroke="${col}" stroke-width="2"/><text x="${(X(a[0]) + X(b[0])) / 2}" y="${(Y(a[1]) + Y(b[1])) / 2 + 9}" text-anchor="middle" style="fill:${col};font-size:24px;font-weight:700">${fmt(n)}</text></g>` : '');
+
+const GUIDED = {
+  // place two points, watch the line appear, read across and up, then where it crosses the y-axis
+  async equation(g, ui, ex) {
+    const { A, B } = ex, L = lineThrough(A, B), dx = B[0] - A[0], dy = B[1] - A[1], corner = [B[0], A[1]];
+    const marks = [];
+    const draw = (more = () => '') => gopts({ draw: ({ X, Y, dot }) => marks.map(([p, col, t]) => dot(p[0], p[1], col) + label(X, Y, p, t, col)).join('') + more(X, Y) });
+    gsay(`Tap the grid to put A at ${P(A)}.`);
+    await tapGraph((p) => same(p, A), (p, n) => (n > 1 ? `Start at the middle (0, 0) and count to ${P(A)}.` : `That’s ${P(p)}. Find ${P(A)}.`));
+    if (!alive(g)) return;
+    marks.push([A, '#1EA1E6', 'A']); draw();
+    gsay(`Now put B at ${P(B)}.`);
+    await tapGraph((p) => same(p, B), (p) => `That’s ${P(p)}. Find ${P(B)}.`);
+    if (!alive(g)) return;
+    marks.push([B, '#7A4BD8', 'B']);
+    gopts({ m: L.m, c: L.c, lineIn: true }); draw();
+    gsay('Look! A line through both points.');
+    await sleep(1800); if (!alive(g)) return;
+    gopts({ lineIn: false });
+    draw((X, Y) => arrowLine(X, Y, A, corner, '#1C8FD8'));
+    gsay('How many steps across from A to B?');
+    await choose(ui.row, around(dx), dx, 'Count the squares across.'); if (!alive(g)) return;
+    draw((X, Y) => arrowLine(X, Y, A, corner, '#1C8FD8', dx) + arrowLine(X, Y, corner, B, '#12A066'));
+    gsay(dy >= 0 ? 'How many steps up to B?' : 'How many steps down to B?');
+    await choose(ui.row, around(Math.abs(dy)), Math.abs(dy), 'Count the squares.'); if (!alive(g)) return;
+    draw((X, Y) => arrowLine(X, Y, A, corner, '#1C8FD8', dx) + arrowLine(X, Y, corner, B, '#12A066', Math.abs(dy)));
+    gsay(dy >= 0 ? 'm = up ÷ across. So m is…' : 'Going down makes m negative. m is…');
+    await choose(ui.row, around(L.m), L.m, `${fmt(dy)} ÷ ${fmt(dx)} = ?`); if (!alive(g)) return;
+    gsay('Tap where the line crosses the y-axis.');
+    await tapGraph((p) => same(p, [0, L.c]), () => 'Find the up-and-down axis, then follow it to the line.'); if (!alive(g)) return;
+    marks.push([[0, L.c], '#12A066', 'c']); draw();
+    finishGuided(g, `So c = ${fmt(L.c)}. You built y = ${exprHTML(L.m, L.c)}!`);
+  },
+  // find x on the x-axis, go up to the line, read y
+  async substitute(g, ui, ex) {
+    const y = ex.m * ex.x + ex.c;
+    gopts({ m: ex.m, c: ex.c, lineIn: true });
+    gsay(`Here’s the line y = ${exprHTML(ex.m, ex.c)}.`);
+    await sleep(1700); if (!alive(g)) return;
+    gopts({ lineIn: false });
+    gsay(`Tap x = ${fmt(ex.x)} on the x-axis.`);
+    await tapGraph((p) => same(p, [ex.x, 0]), () => `The x-axis is the flat line. Find ${fmt(ex.x)} on it.`); if (!alive(g)) return;
+    gopts({ draw: ({ X, Y, dot }) => dot(ex.x, 0, '#1EA1E6') + arrowLine(X, Y, [ex.x, 0], [ex.x, y], '#12A066') + `<g class="pt-now">${dot(ex.x, y, '#7A4BD8')}</g>` });
+    gsay('Go straight up to the line…');
+    await sleep(1600); if (!alive(g)) return;
+    gsay('What is y there?');
+    await choose(ui.row, around(y), y, 'Count up from the x-axis.'); if (!alive(g)) return;
+    finishGuided(g, `Yes! y = ${substitution(ex.m, ex.c, ex.x)} = ${fmt(y)}.`);
+  },
+  // find the y-axis, then where the line crosses it
+  async intercept(g, ui, ex) {
+    gopts({ m: ex.m, c: ex.c, lineIn: true });
+    gsay('Here’s a line.');
+    await sleep(1300); if (!alive(g)) return;
+    gopts({ lineIn: false, draw: ({ X, Y }) => `<line class="y-glow" x1="${X(0)}" y1="${Y(4.4)}" x2="${X(0)}" y2="${Y(-4.4)}" stroke="#3EA9EC" stroke-width="16" stroke-linecap="round" opacity=".35"/>` });
+    gsay('This up-and-down line is the y-axis.');
+    await sleep(1800); if (!alive(g)) return;
+    gsay('Tap where the orange line crosses it.');
+    await tapGraph((p) => same(p, [0, ex.c]), () => 'Stay on the y-axis and find the orange line.'); if (!alive(g)) return;
+    gopts({ draw: ({ X, Y, dot }) => dot(0, ex.c, '#12A066') + label(X, Y, [0, ex.c], '?', '#12A066') });
+    gsay('What number is that?');
+    await choose(ui.row, around(ex.c), ex.c, 'Read the number beside it on the y-axis.'); if (!alive(g)) return;
+    finishGuided(g, `That’s the y-intercept: ${fmt(ex.c)}!`);
+  },
+  // lift the line onto the target on the y-axis with c, then tilt it with m to the other
+  async targets(g, ui, ex) {
+    const [t0, t1] = ex.t, L = lineThrough(t0, t1);
+    TARGETS = ex.t; m = 0; c = 0;
+    gopts({ m, c, targets: true });
+    const ms = slider('m', [905, 560, 300, 70], { min: -4, max: 4, step: 0.25, compact: true, filled: true, into: ui.ctl });
+    const cs = slider('c', [905, 680, 300, 70], { min: -4, max: 4, step: 0.25, compact: true, filled: true, into: ui.ctl });
+    const until = (input, ok) => new Promise((res) => { const h = () => { if (ok()) { input.removeEventListener('input', h); res(); } }; input.addEventListener('input', h); });
+    gsay('Slide c to lift the line onto the first target.');
+    cs.focus({ preventScroll: true });
+    await until(cs, () => Math.abs(c - t0[1]) < 1e-9); if (!alive(g)) return;
+    gsay('Now tilt it with m until it reaches the other one.');
+    ms.focus({ preventScroll: true });
+    await until(ms, () => hitCount() === 2); if (!alive(g)) return;
+    finishGuided(g, `Both hit! m = ${fmt(L.m)} and c = ${fmt(L.c)}.`);
+  },
+};
+function finishGuided(g, text) {
+  if (!alive(g)) return;
+  g.done = true;
+  emit('support', { skill: g.skill, choice: 'try-together', outcome: 'completed' });
+  gsay(text);
+  const f = $('.g-buddy .fitila', scene);
+  f?.classList.add('hey');
+  confetti(innerWidth / 2, innerHeight * 0.4);
+  setTimeout(() => {
+    if (!alive(g)) return;
+    $('#guide-back').hidden = true;
+    const b = $('#guide-bubble');
+    b.querySelector('.bubble-text').innerHTML = `${words('Great building! Ready?')}<span class="offer-acts"><button type="button" class="btn small" data-act="back">Back to my challenge</button><button type="button" class="btn small outline" data-act="similar">Try a similar one</button></span>`;
+    b.classList.add('offer');
+    b.classList.remove('again'); void b.offsetWidth; b.classList.add('again');
+    b.querySelector('[data-act="back"]').focus({ preventScroll: true });
+    announce('Great building! Back to my challenge, or try a similar one.');
+  }, reduced() ? 300 : 2200);
+}
+function endGuided(how) {
+  const g = guided;
+  if (!g) return;
+  emit('support', { skill: g.skill, choice: 'try-together', outcome: g.done ? 'completed' : 'left-early', next: how === 'similar' ? 'similar-question' : 'original-question' });
+  guided = null;
+  if (how === 'similar') { qv[g.from.page] += 1; go(g.from.page); }
+  else go(g.from.page, { restore: g.from, quiet: true });
+}
+
+// =====================================================================================
+// How to play: a walkthrough inside the live activity. A soft spotlight and a hand show one thing
+// at a time, Fitila says what it does, and the learner tries it. Nothing here counts as an answer,
+// and the screen goes back exactly as it was when the walkthrough closes.
+// =====================================================================================
+let tour = null;
+const PRACTICE = { m: 3, c: -2 }; // the walkthrough's practice line, y = 3x − 2: never a live answer
+const fieldOf = (id) => () => $('#' + id)?.closest('.field');
+const buttonNamed = (re) => () => $$('button', scene).find((b) => re.test(b.textContent.trim()));
+const stepFitila = { el: () => $('.g-buddy .fitila', scene), say: 'Stuck? Tap me any time for a hint.', gesture: 'tap' };
+const stepTries = { el: () => $('#tries'), say: 'You get 3 tries. Empty boxes don’t use one.' };
+const slide = (key, say) => ({ el: () => $(`.slider.${key}`, scene), say, gesture: 'drag', target: () => $(`.slider.${key} .thumb`, scene),
+  wait: (done) => { const i = $(`.slider.${key} input`, scene), h = () => done(); i.addEventListener('input', h); return () => i.removeEventListener('input', h); } });
+const typeIn = (id, v, say) => ({ el: fieldOf(id), say, gesture: 'tap', target: () => $('#' + id),
+  wait: (done) => { const i = $('#' + id), h = () => { if (numeric(id) === v) done(); }; i.addEventListener('input', h); setTimeout(() => i.focus({ preventScroll: true }), 50); return () => i.removeEventListener('input', h); } });
+const practiceLine = () => { const host = $('#graph'); if (host) { host._opts = { ...host._opts, m: PRACTICE.m, c: PRACTICE.c, draw: ({ X, Y }) => `<text x="${X(0) + 16}" y="${Y(3.6)}" style="fill:#7A4BD8;font-size:24px;font-weight:700">practice</text>` }; drawGraph(host._opts); } };
+// screen 3: the learner places practice A, then B; only then does the line appear through both
+function practiceTap(which) {
+  return (done) => {
+    const host = $('#graph');
+    host._tap = (p) => {
+      if (which === 'B' && same(p, tour.pA)) return;
+      tour[`p${which}`] = p; host._tap = null;
+      const pts = [[tour.pA, '#1EA1E6', 'A'], [tour.pB, '#7A4BD8', 'B']].filter(([p0]) => p0);
+      host._opts = { draw: ({ X, Y, dot }) => pts.map(([p0, col, t]) => `<g class="pt-now">${dot(p0[0], p0[1], col)}${label(X, Y, p0, t, col)}</g>`).join('') };
+      drawGraph(host._opts);
+      done();
+    };
+    return () => { host._tap = null; };
+  };
+}
+function practiceThrough() {
+  const host = $('#graph'), { pA, pB } = tour;
+  if (!pA || !pB) return;
+  const old = host._opts.draw;
+  const d = [pB[0] - pA[0], pB[1] - pA[1]], a = [pA[0] - d[0] * 6, pA[1] - d[1] * 6], b = [pA[0] + d[0] * 7, pA[1] + d[1] * 7];
+  host._opts = { draw: (k) => `<line class="draw-now" style="--len:2400" x1="${k.X(a[0])}" y1="${k.Y(a[1])}" x2="${k.X(b[0])}" y2="${k.Y(b[1])}" stroke="var(--orange)" stroke-width="4" stroke-linecap="round"/>` + old(k) };
+  drawGraph(host._opts);
+}
+const equationTour = (checkRe) => [
+  { el: () => $('#graph'), say: 'A practice line: y = 3x − 2.', before: practiceLine },
+  typeIn('m-answer', 3, 'm is how steep it is. Type 3.'),
+  typeIn('c-answer', -2, 'c is where it crosses the y-axis. Type −2.'),
+  { el: buttonNamed(checkRe), say: 'Tap Check when you’re sure.' },
+  stepTries, stepFitila,
+];
+const TOURS = {
+  2: () => [slide('m', 'Drag m to tilt the line.'), slide('c', 'Drag c to slide it up and down.'),
+    { el: () => $('#graph'), say: 'Your line changes here. Make it climb!' }, stepFitila],
+  3: () => [
+    { el: () => $('#graph'), say: 'Tap the grid to place A.', gesture: 'tap', before: () => { tour.pA = tour.pB = null; const h = $('#graph'); h._opts = { draw: () => '' }; drawGraph(h._opts); }, wait: practiceTap('A') },
+    { el: () => $('#graph'), say: 'Now tap again to place B.', gesture: 'tap', wait: practiceTap('B') },
+    { el: () => $('#graph'), say: 'A line goes through both points!', before: practiceThrough },
+    { el: () => $('.chip-point.b', scene), say: 'This shows where your B is.' },
+    { el: () => $('#confirm-b'), say: 'Tap Check when B is in place.' },
+  ],
+  4: () => [{ el: () => $('#graph'), say: 'A and B sit on this line.' },
+    { el: () => $$('.pill', scene), say: 'Count across from A to B, then up.' },
+    typeIn('m-answer', 9, 'Your answer goes here. Type 9 to practise.'),
+    { el: buttonNamed(/^Check$/), say: 'Then tap Check.' },
+    { el: () => $('.g-buddy .fitila', scene), say: 'Stuck? Tap me for a hint.', gesture: 'tap' }],
+  5: () => [{ el: () => $$('.measure', scene), say: 'Across and up are counted for you.' },
+    typeIn('m-answer', 9, 'Your answer goes here. Type 9 to practise.'),
+    { el: buttonNamed(/^Check$/), say: 'Then tap Check.' }],
+  6: () => equationTour(/^Check$/),
+  7: () => [{ el: () => $$('.coord', scene), say: 'Two practice points on a line.', before: () => { const k = $$('.coord', scene); k[0].innerHTML = '<span class="badge">A</span>(0, −2)'; k[1].innerHTML = '<span class="badge">B</span>(2, 4)'; } },
+    typeIn('m-answer', 3, 'Up 6, across 2: m = 3. Type 3.'), typeIn('c-answer', -2, 'It crosses the y-axis at −2. Type −2.'),
+    { el: buttonNamed(/^Check Answer$/), say: 'Tap Check Answer when you’re sure.' }, stepTries, stepFitila],
+  8: () => [{ el: () => [$('#equation'), $('#graph')], say: 'A practice line: y = 3x − 2.', before: () => { $('#equation').textContent = 'y = 3x − 2'; practiceLine(); } },
+    { el: () => $('.qcard', scene), say: 'Find y when x = 1.', before: () => { $('.qcard', scene).innerHTML = '<span>(1, <span class="q">?</span>)</span>'; } },
+    typeIn('y-answer', 1, '3 × 1 − 2 = 1. Type 1.'),
+    { el: buttonNamed(/^Check$/), say: 'Then tap Check.' }, stepFitila],
+  9: () => [{ el: () => $('#graph'), say: 'Look for where the line crosses the y-axis.' },
+    { el: () => $$('.choice', scene), say: 'Tap an answer to pick it.', gesture: 'tap', target: () => $$('.choice', scene)[0],
+      wait: (done) => { const h = (e) => { if (e.target.closest('.choice')) done(); }; scene.addEventListener('click', h); return () => scene.removeEventListener('click', h); } },
+    { el: buttonNamed(/^Check Answer$/), say: 'Then tap Check Answer.' },
+    { el: () => [buttonNamed(/Hint$/)(), buttonNamed(/Ask Fitila$/)()], say: 'Need help? Tap Hint or Ask Fitila.' }],
+  11: () => [{ el: () => $('#graph'), say: 'Make the line hit both purple targets.' }, slide('m', 'Drag m to tilt the line.'), slide('c', 'Drag c to move it up and down.'),
+    { el: () => $('#hits'), say: 'Your hits show here.' }, { el: buttonNamed(/^Check$/), say: 'Tap Check when both are hit.' }],
+};
+TOURS[13] = TOURS[6];
+const HAND = '<svg viewBox="0 0 48 56" aria-hidden="true"><path d="M17 30V9a4.5 4.5 0 0 1 9 0v15l2-.5a4 4 0 0 1 4.6 3.2l.3 1.6 1.6-.4a4 4 0 0 1 4.8 3.4l.2 1.3a4 4 0 0 1 5 3.6V45c0 6-5 10-11 10H27c-4 0-7-2-9-5l-8-12a4 4 0 0 1 6-5z" fill="#fff" stroke="#0E2C47" stroke-width="2.6" stroke-linejoin="round"/></svg>';
+const CLOSE = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M9 9l14 14M23 9L9 23"/></svg>';
+function startTour() {
+  const stepsFor = TOURS[page];
+  if (!stepsFor || tour || guided) return;
+  closeModal(false);
+  if (coach) { coach.timers.forEach(clearTimeout); clearTimeout(coach.idle); bubbleAway(); }
+  tour = { page, i: -1, steps: stepsFor(), snap: snapshot(), cleanup: null, targets: [], raf: 0, pA: null, pB: null };
+  emit('tutorial', { action: 'start' });
+  const el = make('div', 'tour');
+  el.id = 'tour';
+  el.innerHTML = `<div class="tour-spot"></div><div class="tour-hand">${HAND}</div>
+    <div class="tour-tip" id="tour-tip" role="dialog" aria-label="How to play">
+      <img class="tour-fitila" src="media/fitila/point_poster.webp" alt="">
+      <div class="tour-body"><p class="tour-say" id="tour-say" aria-live="polite"></p>
+        <div class="tour-nav"><span class="tour-dots" aria-hidden="true"></span><button type="button" class="tour-skip">Skip</button>
+          <button type="button" class="btn small outline tour-back">Back</button><button type="button" class="btn small tour-next">Next</button></div></div>
+      <button type="button" class="tour-close" aria-label="Close how to play">${CLOSE}</button></div>`;
+  document.body.append(el);
+  $('.tour-next', el).addEventListener('click', () => tourStep(tour.i + 1));
+  $('.tour-back', el).addEventListener('click', () => tourStep(tour.i - 1));
+  $('.tour-skip', el).addEventListener('click', () => endTour(false));
+  $('.tour-close', el).addEventListener('click', () => endTour(false));
+  for (const t of ['pointerdown', 'click']) document.addEventListener(t, tourGuard, true);
+  document.addEventListener('keydown', tourKeys, true);
+  tourStep(0);
+  const loop = () => { if (!tour) return; tourPlace(); tour.raf = requestAnimationFrame(loop); };
+  loop();
+}
+// during the walkthrough only the highlighted element and the walkthrough itself respond
+function tourGuard(e) {
+  if (!tour || e.target.closest?.('#tour-tip, #admin, #admin-fab')) return;
+  if (tour.targets.some((t) => t.contains(e.target))) return;
+  e.preventDefault(); e.stopPropagation();
+}
+function tourKeys(e) {
+  if (!tour) return;
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); endTour(false); }
+}
+function tourStep(i) {
+  if (!tour) return;
+  tour.cleanup?.(); tour.cleanup = null;
+  if (i >= tour.steps.length) { endTour(true); return; }
+  if (i < 0) return;
+  tour.i = i;
+  const st = tour.steps[i], tip = $('#tour-tip');
+  st.before?.();
+  tour.targets = [].concat(st.el?.() || []).filter(Boolean);
+  tour.pointAt = st.target?.() || tour.targets[0];
+  tour.gesture = st.gesture || '';
+  tour.targets[0]?.scrollIntoView?.({ block: 'center', inline: 'nearest' });
+  $('.tour-say', tip).innerHTML = st.say;
+  $('.tour-dots', tip).innerHTML = tour.steps.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('');
+  $('.tour-back', tip).disabled = i === 0;
+  const next = $('.tour-next', tip);
+  next.textContent = i === tour.steps.length - 1 ? 'Let’s play!' : 'Next';
+  tip.classList.toggle('waiting', !!st.wait);
+  next.disabled = !!st.wait;
+  if (st.wait) {
+    tour.cleanup = st.wait(() => {
+      if (!tour || tour.i !== i) return;
+      next.disabled = false; tip.classList.remove('waiting');
+      $('.tour-say', tip).insertAdjacentHTML('beforeend', ' <b class="tour-nice">Nice!</b>');
+      setTimeout(() => { if (tour && tour.i === i) tourStep(i + 1); }, reduced() ? 400 : 1000);
+    });
+  } else next.focus({ preventScroll: true });
+  const hand = $('.tour-hand');
+  hand.className = `tour-hand ${tour.gesture}`;
+  tourPlace();
+}
+// spotlight, hand and tip follow the target; the tip moves to whichever side has room
+function tourPlace() {
+  const spot = $('.tour-spot'), hand = $('.tour-hand'), tip = $('#tour-tip');
+  if (!spot) return;
+  const rs = tour.targets.map((t) => t.getBoundingClientRect()).filter((r) => r.width || r.height);
+  const vw = innerWidth, vh = visualViewport?.height || innerHeight, pad = 10, gap = 14, edge = 12;
+  if (!rs.length) { spot.style.cssText = 'opacity:0'; hand.style.opacity = 0; }
+  const r = rs.length ? { left: Math.min(...rs.map((x) => x.left)) - pad, top: Math.min(...rs.map((x) => x.top)) - pad,
+    right: Math.max(...rs.map((x) => x.right)) + pad, bottom: Math.max(...rs.map((x) => x.bottom)) + pad } : { left: vw / 2, top: vh / 2, right: vw / 2, bottom: vh / 2 };
+  if (rs.length) spot.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.right - r.left}px;height:${r.bottom - r.top}px`;
+  const pr = tour.pointAt?.getBoundingClientRect();
+  if (pr && tour.gesture) hand.style.cssText = `opacity:1;left:${Math.min(vw - 50, pr.left + pr.width / 2)}px;top:${Math.min(vh - 60, pr.top + pr.height / 2)}px`;
+  else hand.style.opacity = 0;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  const fits = { below: r.bottom + gap + th <= vh - edge, above: r.top - gap - th >= edge, right: r.right + gap + tw <= vw - edge, left: r.left - gap - tw >= edge };
+  let x, y;
+  const cx = (r.left + r.right) / 2 - tw / 2, cy = (r.top + r.bottom) / 2 - th / 2;
+  if (fits.below) { x = cx; y = r.bottom + gap; } else if (fits.above) { x = cx; y = r.top - gap - th; }
+  else if (fits.right) { x = r.right + gap; y = cy; } else if (fits.left) { x = r.left - gap - tw; y = cy; }
+  else { x = cx; y = vh - th - edge; } // a target as big as the screen: the tip sits at the bottom
+  tip.style.left = `${Math.max(edge, Math.min(vw - tw - edge, x))}px`;
+  tip.style.top = `${Math.max(edge, Math.min(vh - th - edge, y))}px`;
+}
+function endTour(finished = false, restore = true) {
+  if (!tour) return;
+  const t = tour;
+  tour = null;
+  t.cleanup?.();
+  cancelAnimationFrame(t.raf);
+  for (const k of ['pointerdown', 'click']) document.removeEventListener(k, tourGuard, true);
+  document.removeEventListener('keydown', tourKeys, true);
+  $('#tour')?.remove();
+  const host = $('#graph');
+  if (host) host._tap = null;
+  emit('tutorial', { action: finished ? 'finished' : 'closed', step: t.i + 1, of: t.steps.length });
+  if (restore && page === t.page) { go(t.page, { restore: t.snap, quiet: true }); $('#help').focus({ preventScroll: true }); }
+}
+
+// =====================================================================================
+// Admin preview (development only): Ctrl+M, or the Admin button on touch screens, opens a small
+// panel to load any level. It needs the platform's admin role — the shortcut alone does nothing —
+// and it never changes the learner's assigned level.
+// =====================================================================================
+const STAR = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></svg>';
+function adminReady() {
+  if (!platform.admin || $('#admin-fab')) return;
+  const fab = make('button', 'admin-fab', 'Admin');
+  fab.id = 'admin-fab'; fab.type = 'button';
+  fab.setAttribute('aria-label', 'Open the developer level override');
+  fab.addEventListener('click', () => adminPanel());
+  document.body.append(fab);
+}
+function adminPanel(open = !$('#admin')) {
+  $('#admin')?.remove();
+  if (!open || !platform.admin) { $('#admin-fab')?.focus({ preventScroll: true }); return; }
+  const el = make('div', 'admin');
+  el.id = 'admin';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'Developer level override');
+  const current = override?.level;
+  el.innerHTML = `<div class="admin-head"><b>Developer override</b><button type="button" class="admin-close" aria-label="Close the developer panel">${CLOSE}</button></div>
+    <p class="admin-note">Assigned by the platform: <b>${LEVELS[platform.level].name}</b>${override ? `<br>Previewing: <b>${LEVELS[current].name}</b>` : ''}</p>
+    <div class="admin-levels">${LEVELS.map((l, i) => `<button type="button" data-level="${i}" aria-pressed="${current === i}"><span class="stars">${STAR.repeat(i + 1)}</span>${l.name}</button>`).join('')}</div>
+    <button type="button" class="btn small outline admin-return" ${override ? '' : 'disabled'}>Return to assigned activity</button>`;
+  document.body.append(el);
+  $('.admin-close', el).addEventListener('click', () => adminPanel(false));
+  $$('[data-level]', el).forEach((b) => b.addEventListener('click', () => {
+    const i = Number(b.dataset.level);
+    if (!override) override = { back: snapshot() };
+    override.level = i;
+    adminPanel(false);
+    $('#admin-fab').textContent = `Admin · ${LEVELS[i].name}`;
+    go(firstScreen(i));
+  }));
+  $('.admin-return', el).addEventListener('click', () => {
+    const back = override?.back;
+    override = null;
+    adminPanel(false);
+    $('#admin-fab').textContent = 'Admin';
+    if (back) go(back.page, back.page === 1 ? {} : { restore: back, quiet: true });
+  });
+  $('[data-level]', el).focus({ preventScroll: true });
+}
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'm') {
+    if (!platform.admin) return; // the shortcut alone grants nothing
+    e.preventDefault();
+    adminPanel();
+  }
+  if (e.key === 'Escape' && $('#admin')) adminPanel(false);
+});
+
+// ---------- the learning platform: assigned level and admin role in, attempts and support choices out ----------
+function emit(type, detail = {}) {
+  const d = { screen: page, ...detail };
+  dispatchEvent(new CustomEvent(`gradientlab:${type}`, { detail: d }));
+  if (window.parent !== window) window.parent.postMessage({ type: `gradientlab:${type}`, ...d }, '*');
+}
+function configure(cfg = {}) {
+  const lv = levelIndex(cfg.level);
+  if (lv != null) platform.level = lv;
+  if (cfg.role === 'admin') { platform.admin = true; adminReady(); }
+}
+addEventListener('gradientlab:config', (e) => configure(e.detail));
+addEventListener('message', (e) => { if (e.source === window.parent && e.data?.type === 'gradientlab:config') configure(e.data); });
+adminReady();
+
+// ---------- keep the focused answer box (and its button) above an on-screen keyboard ----------
+if (window.visualViewport) {
+  const lift = () => {
+    const el = document.activeElement, app = $('#app'), shift = Number(app.dataset.shift || 0);
+    const typing = el?.matches?.('#scene input[type=text]');
+    if (getComputedStyle(app).position !== 'fixed') { if (typing) el.scrollIntoView({ block: 'center' }); return; }
+    const need = typing ? el.getBoundingClientRect().bottom + shift + 96 - (visualViewport.offsetTop + visualViewport.height) : 0;
+    const next = Math.max(0, Math.round(need));
+    if (next !== shift) { app.dataset.shift = next; app.style.translate = next ? `0 ${-next}px` : ''; }
+  };
+  visualViewport.addEventListener('resize', lift);
+  addEventListener('focusin', () => setTimeout(lift, 250));
+  addEventListener('focusout', () => setTimeout(lift, 120));
+}
+
 // ---------- header controls and start ----------
 addEventListener('hashchange', () => { const n = Number(location.hash.slice(1)); if (PAGES[n] && n !== page) go(n); });
 $('#audio').addEventListener('click', () => {
   const btn = $('#audio');
   if (!('speechSynthesis' in window)) { announce('Reading aloud is not available in this browser.'); return; }
   if (speechSynthesis.speaking) { speechSynthesis.cancel(); btn.setAttribute('aria-pressed', 'false'); return; }
-  const say = modalOpen ? modalOpen.el.innerText : $$('.bubble, .grp > .hand', scene).map((e) => e.innerText).join('. ');
+  const say = modalOpen ? modalOpen.el.innerText : coach ? coach.text : $$('.grp > .hand', scene).map((e) => e.innerText).join('. ');
   const u = new SpeechSynthesisUtterance(say);
   u.onend = () => btn.setAttribute('aria-pressed', 'false');
   btn.setAttribute('aria-pressed', 'true');
   speechSynthesis.speak(u);
 });
+$('#help').addEventListener('click', () => startTour());
 $('#exit').addEventListener('click', () => modal({ title: 'Leave Gradient Lab?', body: 'You can come back to the welcome screen.', pose: 'think', action: 'Back to start', onAction: () => go(1) }));
 document.documentElement.classList.toggle('anim', !reduced());
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', () => document.documentElement.classList.toggle('anim', !reduced()));

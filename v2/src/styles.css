@@ -32,6 +32,7 @@ p, h1, h2 { margin: 0; }
 
 /* the background always covers the whole window, whatever its shape */
 .backdrop { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.backdrop .flower { transform-box: view-box; transform-origin: var(--cx) var(--cy); }
 
 /* ---------- the frame: a 1672 × 941 design space, sized to the window ---------- */
 #app { position: fixed; inset: 0; overflow: hidden; }
@@ -57,6 +58,8 @@ p, h1, h2 { margin: 0; }
 .header #exit { left: calc(var(--u) * 1559); top: calc(var(--u) * 22); }
 .round[aria-pressed="true"] { background: #DDF1FD; }
 
+.header #help { left: calc(var(--u) * 1381); top: calc(var(--u) * 22); }
+
 /* ---------- buttons ---------- */
 .btn { border: calc(var(--u) * 2) solid #2E95D0; border-radius: calc(var(--u) * 46); background: linear-gradient(var(--btn-top), var(--btn-bot));
   box-shadow: 0 calc(var(--u) * 8) 0 var(--btn-edge); color: #fff; font-family: var(--ui); font-weight: 500; font-size: calc(var(--u) * 30);
@@ -74,9 +77,30 @@ p, h1, h2 { margin: 0; }
 .bubble .tail { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: -1; pointer-events: none; }
 .bubble-text { position: relative; }
 .bubble .w { display: inline-block; white-space: pre; }
+/* timed: the bubble steps aside after a few seconds, and comes back to offer a hint */
+.bubble.away { opacity: 0; visibility: hidden; pointer-events: none; }
+.bubble.tip { cursor: pointer; }
+.bubble.tip .bubble-text { font-size: .8em; }
+.pill .ask { color: var(--orange); font-weight: 800; }
+/* Fitila's offer to work through it together: the bubble grows upwards, its tail still on her */
+.bubble.offer { height: auto; top: auto; bottom: calc((941 - var(--y) - var(--h)) * var(--u)); width: calc(max(var(--w), 400) * var(--u));
+  left: auto; right: calc((1672 - var(--x) - var(--w)) * var(--u)); padding: calc(var(--u) * 18) calc(var(--u) * 22); cursor: default; }
+.bubble.offer .tail { top: auto; left: auto; bottom: 0; right: 0; width: calc(var(--w) * var(--u)); height: calc(var(--h) * var(--u)); }
+.bubble.offer .bubble-text, .bubble.guide .bubble-text { white-space: normal; }
+.bubble.offer .bubble-text { font-size: calc(var(--u) * 29); }
+.offer-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--u) * 12); margin-top: calc(var(--u) * 16); }
+.btn.small { height: calc(var(--u) * 54); font-size: calc(var(--u) * 22); padding: 0 calc(var(--u) * 22); border-radius: calc(var(--u) * 30); box-shadow: 0 calc(var(--u) * 5) 0 var(--btn-edge); -webkit-text-stroke: 0; }
+.btn.small.outline { box-shadow: 0 calc(var(--u) * 4) 0 #D3ECFB; }
+.choice.pick { justify-content: center; padding: 0; font-size: calc(var(--u) * 36); font-weight: 700; border-radius: calc(var(--u) * 24); }
+#graph.tapping { cursor: crosshair; touch-action: none; }
 
 /* ---------- Fitila: a looping clip (transparent), positioned by her resting pose ---------- */
 .fitila { pointer-events: none; z-index: 2; }
+.fitila video { pointer-events: none; }
+.fitila.tappable { pointer-events: auto; cursor: pointer; }
+.fitila.tappable:focus-visible { outline-offset: calc(var(--u) * 8); border-radius: calc(var(--u) * 30); }
+#graph[role="application"] { cursor: pointer; touch-action: none; }
+#graph.dragging { cursor: grabbing; }
 /* controls always sit in front of Fitila, even mid-gesture */
 .field, .btn, .choice, .pill, .measure, .chip-point, .target-count, .coord, .qcard, .tries, .slider, .round { z-index: 4; }
 .fitila .shadow { position: absolute; left: 14%; right: 14%; bottom: -2.5%; height: 8%; border-radius: 50%; background: radial-gradient(closest-side, rgba(40, 60, 80, .2), rgba(40, 60, 80, 0)); }
@@ -243,6 +267,12 @@ p, h1, h2 { margin: 0; }
 @keyframes confetti { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; } }
 @keyframes squash { 0% { transform: none; } 35% { transform: scale(1.18, .82); } 70% { transform: scale(.94, 1.06); } 100% { transform: none; } }
 @keyframes ghost { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+@keyframes bubbleOut { 0% { opacity: 1; visibility: visible; transform: none; } 100% { opacity: 0; visibility: hidden; transform: scale(.5); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes handTap { 0%, 100% { transform: translate(6px, 12px); } 45% { transform: translate(0, 0) scale(.9); } }
+@keyframes handDrag { 0%, 100% { transform: translateX(-28px); } 50% { transform: translateX(28px); } }
+@keyframes breathe { 0%, 100% { scale: 1; } 50% { scale: 1.06; } }
+@keyframes hey { 0%, 100% { transform: none; } 20% { transform: translateY(calc(var(--u) * -22)) rotate(-4deg); } 40% { transform: translateY(0) scale(1.04, .96); } 60% { transform: translateY(calc(var(--u) * -10)) rotate(3deg); } 80% { transform: none; } }
 
 /* staged entry: each element waits for its turn (--d, set per element), then springs in */
 .anim .enter [data-in] { animation-delay: var(--d, 0ms); animation-fill-mode: backwards; }
@@ -276,7 +306,25 @@ p, h1, h2 { margin: 0; }
 .anim .bump { animation: bounce 380ms var(--spring); }
 .anim .tries .dots i { transition: background-color 300ms ease, transform 420ms var(--spring); }
 .anim .tries .dots i.used { transform: scale(.82); }
-.anim .ghost-b { transform-box: fill-box; transform-origin: center; animation: ghost 1.6s ease-in-out infinite; }
+.anim .drag-b > circle:first-child { transform-box: fill-box; transform-origin: center; animation: ghost 1.6s ease-in-out infinite; }
+.anim #graph.dragging .drag-b > circle:first-child { animation: none; transform: scale(1.3); }
+.anim .backdrop .flower { animation: spin 150s linear infinite, breathe 22s ease-in-out infinite; }
+.anim .backdrop .flower.rev { animation-direction: reverse, normal; animation-duration: 190s, 26s; }
+.anim .backdrop .flower.slow { animation-duration: 120s, 18s; }
+.anim #scene .bubble.away { animation: bubbleOut 320ms ease-in forwards; }
+.anim #scene .bubble.again { transform-origin: var(--origin, 50% 100%); animation: popIn 600ms var(--spring) backwards; }
+.anim #scene .bubble.again .w { animation: wordIn 420ms var(--spring) backwards; animation-delay: calc(200ms + var(--i) * 70ms); }
+.anim #scene .fitila.hey { animation: hey 900ms ease-in-out; }
+.anim .graph .draw-now { stroke-dasharray: var(--len, 1200); animation: draw 1000ms cubic-bezier(.3, .7, .2, 1) both; }
+.anim .graph .dash-in { animation: fadeIn 500ms ease both; }
+.anim .graph .pt-now { transform-box: fill-box; transform-origin: center; animation: popIn 460ms var(--spring) both; }
+.anim .tour-spot { transition: left 420ms var(--spring-soft), top 420ms var(--spring-soft), width 420ms var(--spring-soft), height 420ms var(--spring-soft); }
+.anim .tour-hand { transition: left 380ms ease, top 380ms ease, opacity 200ms ease; }
+.anim .tour-hand.tap svg { animation: handTap 1.2s ease-in-out infinite; }
+.anim .tour-hand.drag svg { animation: handDrag 1.6s ease-in-out infinite; }
+.anim .tour-tip { animation: popIn 420ms var(--spring) backwards; }
+.anim .fitila.tappable { transition: transform 420ms var(--spring); }
+.anim .fitila.tappable:hover { transform: translateY(calc(var(--u) * -6)) scale(1.02); }
 .anim .target-halo { transform-box: fill-box; transform-origin: center; animation: pulse 1.8s ease-in-out infinite; }
 .anim .coord { animation: float 3.2s ease-in-out infinite; }
 .anim .coord.purple { animation-delay: -1.6s; }
@@ -304,6 +352,7 @@ p, h1, h2 { margin: 0; }
   .header .title { left: calc(var(--u) * 321); }
   .header #audio { left: calc(var(--u) * 800); }
   .header #exit { left: calc(var(--u) * 880); }
+  .header #help { left: calc(var(--u) * 720); }
   /* the board: graph full width, equation badge overlapping its top edge */
   #scene .g-board { flex-direction: column; gap: 0; }
   #scene .g-board .graph { width: 100%; aspect-ratio: var(--ar); }
@@ -313,8 +362,11 @@ p, h1, h2 { margin: 0; }
   #scene .g-buddy .bubble { flex: 1 1 auto; max-width: calc(var(--u) * 560); min-height: calc(var(--u) * 110); padding: calc(var(--u) * 22) calc(var(--u) * 34); }
   #scene .bubble-text { white-space: normal; }
   #scene .g-buddy .bubble .tail { display: none; }
-  #scene .g-buddy .bubble::after { content: ''; position: absolute; right: calc(var(--u) * -14); top: calc(50% - var(--u) * 14); width: calc(var(--u) * 28); height: calc(var(--u) * 28);
-    background: #fff; border-right: calc(var(--u) * 2) solid #E4EBF1; border-top: calc(var(--u) * 2) solid #E4EBF1; transform: rotate(45deg); border-radius: 0 calc(var(--u) * 6) 0 0; }
+  /* Fitila stands to the left of her bubble here, so the tail points left, at her */
+  #scene .g-buddy .bubble::after { content: ''; position: absolute; left: calc(var(--u) * -14); top: calc(50% - var(--u) * 14); width: calc(var(--u) * 28); height: calc(var(--u) * 28);
+    background: #fff; border-left: calc(var(--u) * 2) solid #E4EBF1; border-bottom: calc(var(--u) * 2) solid #E4EBF1; transform: rotate(45deg); border-radius: 0 0 0 calc(var(--u) * 6); }
+  #scene .bubble.offer { top: auto; bottom: auto; left: auto; right: auto; width: auto; }
+  #scene .choice.pick { width: calc(var(--u) * 150); }
   #scene .g-buddy .fitila { flex: none; height: calc(var(--u) * 340) !important; width: calc(var(--u) * 340 * var(--ar)) !important; }
   #scene .g-buddy .round { position: absolute !important; right: 0; top: 0; }
   #scene .g-controls { flex-direction: column; }
@@ -333,3 +385,48 @@ p, h1, h2 { margin: 0; }
   .backdrop .wide-only { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- How to play: spotlight, hand and Fitila's tip (sized in px so it stays readable on phones) ---------- */
+.tour { position: fixed; inset: 0; z-index: 25; pointer-events: none; }
+.tour-spot { position: fixed; border-radius: 22px; pointer-events: none; box-shadow: 0 0 0 200vmax rgba(14, 34, 54, .42), 0 0 0 4px #FFD54A, 0 0 24px 6px rgba(255, 213, 74, .55); }
+.tour-hand { position: fixed; width: 44px; height: 52px; margin: -4px 0 0 -12px; pointer-events: none; opacity: 0; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .22)); }
+.tour-hand svg { width: 100%; height: 100%; display: block; }
+.tour-tip { position: fixed; left: 12px; top: 12px; pointer-events: auto; display: flex; align-items: flex-end; gap: 10px; width: min(460px, calc(100vw - 24px)); }
+.tour-fitila { width: clamp(64px, 18vw, 92px); height: auto; flex: none; filter: drop-shadow(0 6px 10px rgba(14, 34, 54, .25)); }
+.tour-body { position: relative; flex: 1; min-width: 0; background: #fff; border: 2px solid #E4EBF1; border-radius: 24px; padding: 16px 18px 14px; box-shadow: 0 12px 32px rgba(14, 34, 54, .28); }
+.tour-body::before { content: ''; position: absolute; left: -11px; bottom: 26px; width: 18px; height: 18px; background: #fff; border-left: 2px solid #E4EBF1; border-bottom: 2px solid #E4EBF1; transform: rotate(45deg); border-radius: 0 0 0 4px; }
+.tour-say { font-family: var(--hand); font-size: clamp(21px, 2.1vw, 27px); line-height: 1.15; color: var(--ink); -webkit-text-stroke: .02em currentColor; margin: 0 34px 12px 0; }
+.tour-nice { color: var(--green); }
+.tour-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tour-dots { display: flex; gap: 5px; margin-right: auto; }
+.tour-dots i { width: 8px; height: 8px; border-radius: 50%; background: #D4DEE7; }
+.tour-dots i.on { background: var(--blue-ink); }
+.tour-skip { background: none; border: 0; color: #5C6F82; font: 600 15px var(--ui); padding: 8px 6px; }
+.tour-tip .btn.small { height: 40px; font-size: 16px; padding: 0 16px; border-radius: 22px; box-shadow: 0 4px 0 var(--btn-edge); }
+@media (max-width: 480px) {
+  .tour-tip { gap: 6px; }
+  .tour-body { padding: 14px 14px 12px; }
+  .tour-nav { gap: 6px; }
+  .tour-tip .btn.small { height: 38px; font-size: 15px; padding: 0 12px; }
+  .tour-skip { padding: 8px 2px; font-size: 14px; }
+}
+.tour-tip .btn.small.outline { box-shadow: 0 3px 0 #D3ECFB; }
+.tour-tip .btn:disabled { opacity: .4; }
+.tour-close, .admin-close { position: absolute; right: 8px; top: 8px; width: 34px; height: 34px; border-radius: 50%; border: 2px solid #BFE0F5; background: #FAFDFF; color: #0B78B5; display: grid; place-items: center; padding: 0; }
+.tour-close svg, .admin-close svg { width: 60%; height: 60%; }
+
+/* ---------- admin preview (only ever added to the page for admins) ---------- */
+/* a slim tab on the left edge, where no activity places its controls */
+.admin-fab { position: fixed; left: 0; top: 50%; translate: 0 -50%; z-index: 30; writing-mode: vertical-rl; transform: rotate(180deg); font: 700 11px var(--ui); letter-spacing: .06em; color: #fff;
+  background: #2C4566; border: 0; border-radius: 10px 0 0 10px; padding: 12px 4px; min-height: 64px; opacity: .85; }
+.admin { position: fixed; left: 28px; top: 50%; translate: 0 -50%; z-index: 31; width: min(300px, calc(100vw - 40px)); max-height: calc(100dvh - 24px); overflow: auto; background: #fff; border: 2px solid #D3E5F2; border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(14, 34, 54, .3); padding: 14px; font-family: var(--ui); color: var(--ink); }
+.admin-head { position: relative; font-size: 16px; padding: 6px 40px 8px 0; }
+.admin-close { top: 0; right: 0; }
+.admin-note { font-size: 13px; color: #4F6880; line-height: 1.45; margin-bottom: 10px; }
+.admin-levels { display: grid; gap: 6px; margin-bottom: 10px; }
+.admin-levels button { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 14px; border: 2px solid #D8E1E9; background: #fff; font: 600 15px var(--ui); color: var(--ink); }
+.admin-levels button[aria-pressed="true"] { background: #3EA9EC; border-color: #1C7FC0; color: #fff; }
+.admin .stars { display: flex; gap: 1px; width: 46px; }
+.admin .stars svg { width: 14px; height: 14px; fill: #F5B400; }
+.admin .admin-return { width: 100%; height: 44px; font-size: 15px; border-radius: 22px; }

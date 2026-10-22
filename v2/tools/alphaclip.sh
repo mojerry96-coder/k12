@@ -1,5 +1,6 @@
 #!/bin/sh
-# Turns a Fitila clip into transparent web video: every frame is lifted with Vision, cropped to
+# Turns a Fitila clip into transparent web video: every frame is lifted with Vision (repaired by
+# matte.py so pale head feathers are never cut), cropped to
 # the union of all frames (+ padding), then encoded as VP9-alpha WebM (Chrome/Edge/Firefox) and
 # HEVC-alpha MOV (Safari), plus a transparent WebP poster of the first frame.
 # usage: tools/alphaclip.sh CLIP.mp4 OUT_STEM [height]
@@ -10,6 +11,7 @@ WORK="$(mktemp -d)"
 ffmpeg -v error -i "$CLIP" -vf "scale=in_color_matrix=bt709:in_range=tv:flags=accurate_rnd+full_chroma_int" "$WORK/in_%04d.png"
 mkdir -p "$WORK/in" && mv "$WORK"/in_*.png "$WORK/in/"
 swift "$HERE/liftdir.swift" "$WORK/in" "$WORK/out"
+python3 "$HERE/matte.py" "$WORK/in" "$WORK/out" # give back pale feathers Vision dropped
 # union of opaque pixels across frames, padded, even-sized
 BOX=$(python3 - "$WORK/out" <<'PY'
 import sys, os
