@@ -12,6 +12,9 @@
   location.hash = '#1'; await w(300);
   btn(/^Let’s play/).click(); await w(200);
   ok('1 → Let’s play opens Line Lab', hash() === '#2' && $('#equation').textContent === 'y = 0');
+  ok('2: "Walk the line" waits until a slider moves (progressive reveal)', $('#walk').hidden);
+  slide('m', 0.25); slide('m', 0); await w(50);
+  ok('2: moving a slider reveals "Walk the line"', !$('#walk').hidden);
   btn(/Walk the line/).click(); await w(100);
   ok('2: walking a flat line asks to make it climb (stays on 2)', !!$('.modal') && /Make it climb/.test($('.modal').textContent));
   $('#modal-button').click();

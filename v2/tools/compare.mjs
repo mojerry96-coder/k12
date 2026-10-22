@@ -28,7 +28,7 @@ for (const n of only) {
   await send('Page.navigate', { url: `${url}#${n}` });
   await sleep(900);
   await send('Runtime.evaluate', { expression: 'document.fonts.ready', awaitPromise: true });
-  await sleep(250);
+  await sleep(2600); // the staged entrance settles
   const shot = await send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: 1672, height: 941, scale: 1 } });
   writeFileSync(join(out, `build_${String(n).padStart(2, '0')}.png`), Buffer.from(shot.data, 'base64'));
 }

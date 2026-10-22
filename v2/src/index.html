@@ -2,19 +2,20 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <title>Gradient Lab — Fitila</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<main id="viewport">
-  <div id="stage">
-    <svg class="decor" viewBox="0 0 1672 941" aria-hidden="true">
-      <path fill="#E6F1F7" opacity=".85" d="M60 100C150 70 205 150 175 250C250 150 360 130 385 210C405 300 290 330 210 360C320 380 410 470 360 560C300 640 200 580 150 500C150 610 110 720 50 730C-10 700 -10 600 0 520L0 120Z"/>
-      <path fill="#F6EEF2" opacity=".75" d="M1672 380C1560 360 1480 430 1480 520C1400 470 1300 500 1280 590C1170 590 1080 660 1070 760C1060 860 1130 941 1130 941H1672Z"/>
-      <path fill="#EEF4F8" opacity=".7" d="M1672 640C1600 640 1560 700 1570 760C1520 760 1480 820 1490 880C1495 920 1520 941 1520 941H1672Z"/>
-    </svg>
+<!-- soft background shapes: they cover the whole window at any shape -->
+<svg class="backdrop" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <path fill="#E6F1F7" opacity=".85" d="M60 100C150 70 205 150 175 250C250 150 360 130 385 210C405 300 290 330 210 360C320 380 410 470 360 560C300 640 200 580 150 500C150 610 110 720 50 730C-10 700 -10 600 0 520L0 120Z"/>
+  <path fill="#F6EEF2" opacity=".75" d="M1672 380C1560 360 1480 430 1480 520C1400 470 1300 500 1280 590C1170 590 1080 660 1070 760C1060 860 1130 941 1130 941H1672Z"/>
+  <path fill="#EEF4F8" opacity=".7" d="M1672 640C1600 640 1560 700 1570 760C1520 760 1480 820 1490 880C1495 920 1520 941 1520 941H1672Z"/>
+</svg>
+<div id="app">
+  <main id="frame">
     <header class="header">
       <div class="brand" aria-label="uLesson"><img class="icon" src="assets/brand/ulesson_icon.webp" alt=""><img class="word" src="assets/brand/ulesson_wordmark.webp" alt="uLesson"></div>
       <i class="divider" aria-hidden="true"></i>
@@ -27,11 +28,9 @@
       </button>
     </header>
     <section id="scene" aria-label="Gradient Lab activity"></section>
-    <div id="scrim" hidden></div>
-    <div id="modal-host"></div>
-    <p class="sr" id="live" aria-live="polite"></p>
-  </div>
-</main>
+  </main>
+</div>
+<p class="sr" id="live" aria-live="polite"></p>
 <script src="app.js"></script>
 </body>
 </html>
