@@ -1,0 +1,91 @@
+// In-page end-to-end check of the lesson flow (1 → 2 → 3 → 4 ↔ 5 → 6 → 7 → 8 → 11 → 10) and
+// the checking rules. Runs in the built page; resolves to PASS/FAIL lines.
+(async () => {
+  const w = (ms) => new Promise((r) => setTimeout(r, ms));
+  const $ = (s) => document.querySelector(s);
+  const out = [], ok = (n, c) => out.push(`${c ? 'PASS' : 'FAIL'}  ${n}`);
+  const btn = (re) => [...document.querySelectorAll('#scene button, #modal-host button')].find((b) => re.test(b.textContent.trim()));
+  const type = (id, v) => { const el = $('#' + id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+  const slide = (key, v) => { const el = [...document.querySelectorAll('.slider input')].find((i) => i.getAttribute('aria-label').startsWith(key === 'm' ? 'Gradient' : 'Y-int')); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+  const hash = () => location.hash;
+
+  location.hash = '#1'; await w(300);
+  btn(/^Let’s play/).click(); await w(200);
+  ok('1 → Let’s play opens Line Lab', hash() === '#2' && $('#equation').textContent === 'y = 0');
+  btn(/Walk the line/).click(); await w(100);
+  ok('2: walking a flat line asks to make it climb (stays on 2)', !!$('.modal') && /Make it climb/.test($('.modal').textContent));
+  $('#modal-button').click();
+  slide('m', 1.5); slide('c', -2); await w(50);
+  ok('2: sliders redraw the equation', $('#equation').textContent === 'y = 1.5x − 2');
+  btn(/Walk the line/).click(); await w(1700);
+  ok('2: walking an uphill line moves on to placing B', hash() === '#3');
+  ok('3: Continue hidden until B is placed', $('#confirm-b').hidden);
+  const svg = $('#graph svg');
+  // place B at (1, 3) by a click at its screen position
+  const host = $('#graph'), g = host._g, r = svg.getBoundingClientRect(), k = r.width / (g.box[2] - 6);
+  const sx = (gx) => r.left + (g.o[0] - g.box[0] - 3 + gx * g.u[0]) * k, sy = (gy) => r.top + (g.o[1] - g.box[1] - 3 - gy * g.u[1]) * k;
+  svg.dispatchEvent(new PointerEvent('pointerdown', { clientX: sx(1), clientY: sy(3), bubbles: true }));
+  await w(50);
+  ok('3: clicking the grid places B (snapped)', $('#b-label').textContent === 'B (1, 3)' && !$('#confirm-b').hidden);
+  $('#confirm-b').click(); await w(50);
+  ok('3: a wrong B gets "Almost!" and stays', hash() === '#3' && /Move B to \(2, 2\)/.test($('.modal')?.textContent || ''));
+  $('#modal-button').click();
+  $('#graph svg').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  $('#graph svg').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  ok('3: arrow keys move B', $('#b-label').textContent === 'B (2, 2)');
+  $('#graph svg').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await w(100);
+  ok('3: Enter on (2, 2) moves on to the gradient question', hash() === '#4');
+  btn(/^Check$/).click(); await w(50);
+  ok('4: blank answer uses no try and opens no dialog', !$('.modal'));
+  type('m-answer', '2'); btn(/^Check$/).click(); await w(50);
+  ok('4: wrong answer → Almost!, 2 tries left', /Almost!/.test($('.modal').textContent) && /2 tries left/.test($('.modal').textContent));
+  $('#modal-button').click();
+  $('.bubble').click(); await w(100);
+  ok('4: the question bubble opens the hint (screen 5)', hash() === '#5' && /Up ÷ across/.test($('.bubble').textContent));
+  type('m-answer', '3'); btn(/^Check$/).click(); await w(50);
+  ok('5: tries carry over between 4 and 5 (1 try left)', /1 try left/.test($('.modal').textContent));
+  $('#modal-button').click();
+  type('m-answer', '1'); btn(/^Check$/).click(); await w(50);
+  ok('5: correct gradient → You got it! 4 ÷ 4 = 1', /You got it!/.test($('.modal').textContent) && /4 ÷ 4 = 1/.test($('.modal').textContent));
+  $('#modal-button').click(); await w(100);
+  ok('Continue → Find m and c (screen 6)', hash() === '#6');
+  type('m-answer', '1'); type('c-answer', '0'); btn(/^Check$/).click(); await w(50);
+  ok('6: right m, wrong c → "Check where the line crosses the y-axis."', /crosses the y-axis/.test($('.modal').textContent));
+  $('#modal-button').click();
+  ok('6: tries shown as 2', /2 tries/.test($('#tries').textContent));
+  type('c-answer', 'abc'); btn(/^Check$/).click(); await w(50);
+  ok('6: non-numeric input uses no try', !$('.modal') && /2 tries/.test($('#tries').textContent));
+  type('c-answer', '1'); btn(/^Check$/).click(); await w(50); $('#modal-button').click(); await w(100);
+  ok('6 → 7 (equation from coordinates)', hash() === '#7');
+  type('m-answer', '1'); type('c-answer', '0'); btn(/^Check Answer$/).click(); await w(50); $('#modal-button').click(); await w(100);
+  ok('7 → 8 (missing number)', hash() === '#8');
+  type('y-answer', '−3'); btn(/^Check$/).click(); await w(50);
+  ok('8: Unicode minus accepted as a number (wrong → Almost!)', /Almost!/.test($('.modal').textContent));
+  $('#modal-button').click();
+  type('y-answer', '3'); btn(/^Check$/).click(); await w(50); $('#modal-button').click(); await w(100);
+  ok('8 → 11 (hit both targets)', hash() === '#11');
+  ok('11: starts at 1 / 2', /1 \/ 2/.test($('#hits').textContent));
+  slide('m', 1); slide('c', -1); await w(50);
+  ok('11: m = 1, c = −1 hits both (2 / 2)', /2 \/ 2/.test($('#hits').textContent) && $('#equation').textContent === 'y = x − 1');
+  btn(/^Check$/).click(); await w(50); $('#modal-button').click(); await w(100);
+  ok('11 → 10 (activity complete)', hash() === '#10' && /Brilliant work!/.test($('#scene').textContent));
+  let fired = false; addEventListener('gradientlab:complete', () => { fired = true; }, { once: true });
+  btn(/Back to lesson/).click(); await w(100);
+  ok('10: Back to lesson emits gradientlab:complete and returns to the start', fired && hash() === '#1');
+  // three wrong answers → practise again, never marked correct
+  location.hash = '#8'; await w(200);
+  for (let i = 0; i < 3; i++) { type('y-answer', '9'); btn(/^Check$/).click(); await w(30); if (i < 2) $('#modal-button').click(); }
+  ok('three wrong answers → "Practise again", not success', /Practise again/.test($('.modal').textContent) && !/You got it/.test($('.modal').textContent));
+  $('#modal-button').click();
+  ok('practising again restores 3 tries', /3 tries/.test($('#tries').textContent));
+  // dialog behaviour
+  $('#exit').click(); await w(50);
+  ok('Exit opens a confirm dialog; Escape closes it', !!$('.modal') && (document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), !$('.modal')));
+  location.hash = '#9'; await w(200);
+  ok('9: opens with the retry overlay and a wrong choice selected', /Almost!/.test($('.modal').textContent) && $('.choice.selected')?.textContent.includes('1'));
+  $('#modal-button').click();
+  ok('9: Try again clears the selection', !$('.choice.selected'));
+  [...document.querySelectorAll('.choice')][2].click(); btn(/Check Answer/).click(); await w(50);
+  ok('9: intercept 1 is correct', /You got it!/.test($('.modal').textContent));
+  return out.join('\n');
+})();

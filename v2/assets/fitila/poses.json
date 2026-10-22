@@ -1,0 +1,122 @@
+{
+ "wave": {
+  "ref": "Fitila welcomes learners to Gradient Lab-1.png",
+  "box": [
+   154,
+   326,
+   523,
+   533
+  ],
+  "others": []
+ },
+ "point": {
+  "ref": "Fitila\u2019s Line Lab-2.png",
+  "box": [
+   1226,
+   372,
+   287,
+   377
+  ],
+  "others": []
+ },
+ "side": {
+  "ref": "Place point B with Fitila-3.png",
+  "box": [
+   1153,
+   362,
+   410,
+   386
+  ],
+  "others": []
+ },
+ "wing": {
+  "ref": "Gradient Lab_ Plot the line-4.png",
+  "box": [
+   1264,
+   247,
+   322,
+   395
+  ],
+  "others": []
+ },
+ "hint": {
+  "ref": "Gradient Hint with Fitila-5.png",
+  "box": [
+   1281,
+   421,
+   235,
+   386
+  ],
+  "others": []
+ },
+ "wingwave": {
+  "ref": "Gradient Lab graph challenge-6.png",
+  "box": [
+   1309,
+   295,
+   272,
+   406
+  ],
+  "others": []
+ },
+ "think": {
+  "ref": "Gradient Lab coordinate challenge-7.png",
+  "box": [
+   1209,
+   340,
+   280,
+   471
+  ],
+  "others": []
+ },
+ "puzzled": {
+  "ref": "Gradient Lab_ Find the Missing Number-8.png",
+  "box": [
+   1346,
+   360,
+   232,
+   411
+  ],
+  "others": []
+ },
+ "celebrate": {
+  "ref": "Gradient Lab activity complete-10.png",
+  "box": [
+   636,
+   138,
+   418,
+   418
+  ],
+  "others": []
+ },
+ "raise": {
+  "ref": "Hit Both Targets in Gradient Lab-11.png",
+  "box": [
+   1115,
+   318,
+   380,
+   385
+  ],
+  "others": []
+ },
+ "almost": {
+  "ref": "Almost! Check the y-axis-13.png",
+  "box": [
+   765,
+   295,
+   139,
+   147
+  ],
+  "others": []
+ },
+ "success": {
+  "ref": "Single parrot in learning popup-14.png",
+  "box": [
+   727,
+   296,
+   222,
+   178
+  ],
+  "others": []
+ }
+}
