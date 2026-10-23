@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Gradient Lab">
+  <defs><clipPath id="gl-in"><rect x="3" y="3" width="58" height="58" rx="15"/></clipPath></defs>
+  <!-- flat badge in the app's blue -->
+  <rect x="3" y="3" width="58" height="58" rx="15" fill="#3EA9EC"/>
+  <g clip-path="url(#gl-in)">
+    <!-- the mini grid -->
+    <path d="M15 3v58M27 3v58M39 3v58M51 3v58M3 15h58M3 27h58M3 39h58M3 51h58" stroke="#fff" stroke-width="1.2" opacity=".3"/>
+    <!-- the step from point to point: across, then up -->
+    <path d="M18.5 43.5H43.5V22.6" fill="none" stroke="#FFE15A" stroke-width="3" stroke-dasharray="3.4 3.2" stroke-linecap="round"/>
+    <!-- the line, climbing left to right -->
+    <path d="M6 54L57 11.5" stroke="#FE6011" stroke-width="5.4" stroke-linecap="round"/>
+  </g>
+  <!-- two plotted points -->
+  <circle cx="18.5" cy="43.5" r="5.6" fill="#fff" stroke="#7A4BD8" stroke-width="3.4"/>
+  <circle cx="43.5" cy="22.6" r="5.6" fill="#7A4BD8" stroke="#fff" stroke-width="3"/>
+  <!-- a little sparkle: the "aha!" -->
+  <path d="M53.5 42.5l1.6 3.9 3.9 1.6-3.9 1.6-1.6 3.9-1.6-3.9-3.9-1.6 3.9-1.6z" fill="#FFE15A"/>
+</svg>

@@ -204,6 +204,16 @@
   $('#back').click(); await w(200);
   ok('Back returns to the previous screen', hash() === '#6');
   ok('Back is hidden on the opener', (location.hash = '#1', await w(200), $('#back').hidden));
+  // Fitila's question copied elsewhere (hint titles, read-aloud, screen readers) keeps its spaces
+  const spoken = {};
+  for (const n of [2, 3, 4, 5, 9]) { location.hash = '#1'; await w(120); location.hash = '#' + n; await w(250); spoken[n] = $('.g-buddy .fitila').getAttribute('aria-label'); }
+  ok('multi-line questions keep their spaces ("climb from", "get a", "the gradient", "B to", "y-intercept of")',
+    /climb from left to right to get a positive/.test(spoken[2]) && /Move B to \(2, 2\)\. Tap/.test(spoken[3]) && /What’s the gradient\?/.test(spoken[4])
+    && /gradient\? Up ÷ across/.test(spoken[5]) && /y-intercept of this line/.test(spoken[9]));
+  location.hash = '#2'; await w(250); $('.g-buddy .fitila').click(); await w(80);
+  ok('the hint pop-up title reads "…climb from left to right to get a positive slope."', /climb from left to right to get a positive slope\./.test($('.modal h2').textContent));
+  $('#modal-button').click();
+  ok('the header shows the Gradient Lab mark, not the uLesson logo', !!$('.brand .mark') && !document.querySelector('.brand img[src*="ulesson"]'));
   // admin preview: hidden from learners; needs the platform's admin role, not just the shortcut
   const ctrlM = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', ctrlKey: true, bubbles: true }));
   location.hash = '#7'; await w(250);

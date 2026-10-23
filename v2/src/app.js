@@ -23,6 +23,9 @@ const POSE = {
 // Per clip: the clip's size, where Fitila's resting pose sits inside it, and a fingerprint of its files (filled in by the build).
 const CLIPS = /*CLIPS*/ {};
 const BUST = new Set(['almost', 'success']);
+// Stand-ins: the think clip's source image had the top of her head cut off, so the puzzled clip (same
+// wing-at-chin pose, whole head) plays wherever "think" is asked for until think is regenerated.
+const STAND_IN = { think: 'puzzled' };
 
 // ---------- graphs: box, origin and unit size measured per screen ----------
 // ax: where the axes (and the line) stop inside the frame [left, right, top, bottom];
@@ -132,6 +135,12 @@ function bubble(lines, b, size, tail, { into, extra = '', stage = 2, delay } = {
 }
 // Fitila: a looping transparent clip placed so her resting pose fills the box; the still cut-out until it plays.
 function fitila(pose, b = POSE[pose], { into, stage = 2, anim = 'hop', cls = '' } = {}) {
+  const stand = STAND_IN[pose];
+  if (stand) { // keep the asked-for spot and height, at the stand-in's proportions
+    const s0 = POSE[stand];
+    if (b) { const w = Math.round((b[3] * s0[2]) / s0[3]); b = [b[0] + Math.round((b[2] - w) / 2), b[1], w, b[3]]; }
+    pose = stand;
+  }
   const el = make('div', `fitila ${BUST.has(pose) ? 'bust' : ''} ${cls}`, '<span class="shadow"></span>');
   el.setAttribute('role', 'img');
   el.setAttribute('aria-label', 'Fitila the parrot');
@@ -429,7 +438,7 @@ function modal({ title, body, pose, action = 'Continue', onAction, remaining = n
   el.innerHTML = `<div class="inner">${MODAL_DECO}<div class="art" style="width:calc(var(--u) * ${artW})">${confettiMarks}</div>
     <h2 id="modal-title">${title}</h2><p class="${success ? 'success' : ''}">${body}</p>
     <button class="btn" type="button" id="modal-button">${action}</button>${remaining !== null ? `<small>${remaining} ${remaining === 1 ? 'try' : 'tries'} left</small>` : ''}</div>`;
-  const p = POSE[pose], artH = (artW * p[3]) / p[2];
+  const p = POSE[STAND_IN[pose] || pose], artH = (artW * p[3]) / p[2];
   const art = fitila(pose, null);
   art.style.cssText += `position:relative;width:calc(var(--u) * ${artW});height:calc(var(--u) * ${artH})`;
   el.querySelector('.art').prepend(art);
@@ -566,7 +575,7 @@ function coachStart({ quiet = false } = {}) {
   const b = $('.g-buddy .bubble', scene), f = $('.g-buddy .fitila', scene);
   if (!b) return;
   const t = b.querySelector('.bubble-text');
-  coach = { b, f, say: t.innerHTML, text: t.textContent.replace(/\s+/g, ' ').trim(), timers: [], idle: 0, offered: false, offering: false };
+  coach = { b, f, say: t.innerHTML, text: plainText(t), timers: [], idle: 0, offered: false, offering: false };
   const entry = quiet ? 0 : parseFloat(b.style.getPropertyValue('--d')) || 0;
   if (quiet) { bubbleSay(words('Your turn!')); coachLater(sayQuestion, 2600); }
   b.addEventListener('click', (e) => {
@@ -579,10 +588,18 @@ function coachStart({ quiet = false } = {}) {
   f.classList.add('tappable');
   f.setAttribute('role', 'button');
   f.tabIndex = 0;
-  f.setAttribute('aria-label', `Fitila says: ${coach.text} Tap her for a hint.`);
+  f.setAttribute('aria-label', `Fitila says: ${coach.text}${/[.!?]$/.test(coach.text) ? '' : '.'} Tap her for a hint.`);
   f.addEventListener('click', helpMe);
   f.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); helpMe(); } });
   if (offerOnArrival) { offerOnArrival = false; coachLater(() => offerSupport(true), entry + 700); }
+}
+// the bubble's words as one sentence: its line breaks become spaces ("climb from", not "climbfrom")
+function plainText(el) {
+  const copy = el.cloneNode(true);
+  copy.querySelectorAll('br').forEach((br) => br.replaceWith(' '));
+  copy.querySelectorAll('div, p').forEach((block) => block.before(' ')); // separate blocks are separate words too
+  copy.querySelectorAll('button').forEach((b) => b.remove());
+  return copy.textContent.replace(/\s+/g, ' ').trim();
 }
 function coachLater(fn, ms) { const c0 = coach; c0.timers.push(setTimeout(() => { if (coach === c0) fn(); }, ms)); }
 function armIdle() {

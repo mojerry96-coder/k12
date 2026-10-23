@@ -46,11 +46,10 @@ p, h1, h2 { margin: 0; }
 
 /* ---------- header ---------- */
 .header > * { position: absolute; }
-.brand { left: calc(var(--u) * 104); top: calc(var(--u) * 29); display: flex; align-items: center; gap: calc(var(--u) * 9); }
-.brand .icon { width: calc(var(--u) * 46); height: auto; display: block; }
-.brand .word { width: calc(var(--u) * 171); height: auto; display: block; }
-.header .divider { left: calc(var(--u) * 357); top: calc(var(--u) * 29); width: calc(var(--u) * 2); height: calc(var(--u) * 40); background: #C9D6E1; border-radius: 2px; }
-.header .title { left: calc(var(--u) * 385); top: calc(var(--u) * 22); font-family: var(--hand); font-size: calc(var(--u) * 40); line-height: calc(var(--u) * 52); -webkit-text-stroke: .025em currentColor; white-space: nowrap; }
+/* the Gradient Lab mark and title sit together, centred on the header buttons' line */
+.brand { left: calc(var(--u) * 104); top: calc(var(--u) * 19); height: calc(var(--u) * 66); display: flex; align-items: center; gap: calc(var(--u) * 16); }
+.brand .mark { width: calc(var(--u) * 62); height: calc(var(--u) * 62); display: block; flex: none; }
+.brand .title { font-family: var(--hand); font-size: calc(var(--u) * 42); line-height: 1; -webkit-text-stroke: .025em currentColor; white-space: nowrap; padding-bottom: calc(var(--u) * 2); }
 .round { width: calc(var(--u) * 60); height: calc(var(--u) * 60); border-radius: 50%; border: calc(var(--u) * 2) solid #BFE0F5; background: #FAFDFF; color: #0B78B5;
   display: grid; place-items: center; box-shadow: 0 calc(var(--u) * 2) calc(var(--u) * 6) rgba(16, 57, 84, .06); }
 .round svg { width: 50%; height: 50%; }
@@ -349,15 +348,11 @@ p, h1, h2 { margin: 0; }
   #scene .L { position: relative; left: auto; top: auto; width: var(--pw, auto); height: auto; }
   #scene .grp { display: flex; width: 100%; justify-content: center; align-items: center; gap: calc(var(--u) * 28); flex-wrap: wrap; position: relative; }
   .header .brand { left: calc(var(--u) * 40); }
-  .header .divider { left: calc(var(--u) * 293); }
-  .header .title { left: calc(var(--u) * 321); }
   .header #audio { left: calc(var(--u) * 800); }
   .header #exit { left: calc(var(--u) * 880); }
   .header #help { left: calc(var(--u) * 720); }
   .header #back { left: calc(var(--u) * 40); }
   .header.has-back .brand { left: calc(var(--u) * 124); }
-  .header.has-back .divider { left: calc(var(--u) * 377); }
-  .header.has-back .title { left: calc(var(--u) * 405); }
   /* the board: graph full width, equation badge overlapping its top edge */
   #scene .g-board { flex-direction: column; gap: 0; }
   #scene .g-board .graph { width: 100%; aspect-ratio: var(--ar); }

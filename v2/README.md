@@ -75,7 +75,7 @@ node tools/compare.mjs /tmp/cmp         # every screen beside its reference, at 
 |---|---|
 | `src/` | `index.html`, `styles.css`, `app.js` (screens, graph, sliders, checking, dialogs) |
 | `assets/fitila/` | Fitila poses cut out of the references with macOS Vision (`tools/lift_all.py`); `poses.json` has each pose's box in design pixels |
-| `assets/brand/` | uLesson icon and wordmark, cut from the official "On White" logo |
+| `assets/brand/` | `gradientlab_mark.svg`, the Gradient Lab mark in the header (a flat badge: a line climbing through two points); the older uLesson logo files are no longer used |
 | `assets/fonts/` | Patrick Hand (display) and SN Pro (interface), both SIL OFL |
 | `references/` | the 14 design screens and the logo file |
 | `media/fitila/` | the looping clips (`.webm`, `.mov`, transparent posters) and `clips.json` |
