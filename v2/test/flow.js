@@ -13,6 +13,7 @@
   location.hash = '#1'; await w(300);
   btn(/^Let’s play/).click(); await w(200);
   ok('1 → Let’s play opens Line Lab', hash() === '#2' && $('#equation').textContent === 'y = 0');
+  ok('2: the question reads "Make the line climb from left to right to get a positive slope."', /Make the line climb from left to right to get a positive slope\./.test($('.bubble').innerText.replace(/\s+/g, ' ')));
   ok('2: "Walk the line" waits until a slider moves (progressive reveal)', $('#walk').hidden);
   slide('m', 0.25); slide('m', 0); await w(50);
   ok('2: moving a slider reveals "Walk the line"', !$('#walk').hidden);
@@ -98,20 +99,23 @@
   // dialog behaviour
   $('#exit').click(); await w(50);
   ok('Exit opens a confirm dialog; Escape closes it', !!$('.modal') && (document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })), !$('.modal')));
-  // timed bubble: says the task, steps aside, then offers a hint; tapping Fitila gives it
+  // the question stays on show; after a still spell "Tap me for a hint!" pops up briefly, then the question returns
   location.hash = '#7'; await w(200);
-  ok('7: the instruction shows first', !$('.bubble').classList.contains('away') && /Find the line’s equation/.test($('.bubble').textContent));
-  await w(8600);
-  ok('7: after a few seconds the bubble offers "Tap me for a hint!"', $('.bubble').classList.contains('tip') && /Tap me\s*for a hint!/.test($('.bubble').textContent));
-  await w(4200);
-  ok('7: the hint offer steps aside too', $('.bubble').classList.contains('away'));
+  ok('7: the question shows first', /Find the line’s equation/.test($('.bubble').textContent));
+  await w(9000);
+  ok('7: the question is still on show after 9 s', !$('.bubble').classList.contains('away') && /Find the line’s equation/.test($('.bubble').textContent));
+  await w(5600);
+  ok('7: after a still spell, "Tap me for a hint!" pops up', $('.bubble').classList.contains('tip') && /Tap me\s*for a hint!/.test($('.bubble').textContent));
+  await w(3300);
+  ok('7: then the question comes straight back', !$('.bubble').classList.contains('tip') && /Find the line’s equation/.test($('.bubble').textContent));
   $('.fitila.tappable').click(); await w(50);
   ok('7: tapping Fitila opens her hint', /change in y/.test($('.modal')?.textContent || ''));
   $('#modal-button').click();
   // later screens: 1st wrong → nudge; 2nd → Fitila offers to work through it; 3rd → working, then a fresh question
   location.hash = '#8'; await w(250);
   type('y-answer', '9'); btn(/^Check$/).click(); await w(30);
-  ok('8: first wrong answer → the short nudge', /Almost!/.test($('.modal').textContent));
+  ok('8: first wrong answer → the short nudge, pointing to the worksheet or a book', /Almost!/.test($('.modal').textContent) && /worksheet or in your book/.test($('.modal').textContent));
+  ok('8: the Worksheet tab pulses so the learner knows it is there', $('#ws-tab').classList.contains('pulse'));
   $('#modal-button').click();
   type('y-answer', ''); btn(/^Check$/).click(); await w(30);
   ok('8: an empty answer uses no try', /2 tries/.test($('#tries').textContent) && !$('.modal'));
@@ -121,7 +125,7 @@
     && /Let’s build this together/.test(offer.textContent) && /Try together/.test(offer.textContent) && /Keep trying/.test(offer.textContent));
   ok('8: the offer never names a level or a downgrade', !/Beginner|Downgrade|Too difficult/i.test(offer.textContent));
   [...offer.querySelectorAll('button')].find((b) => /Keep trying/.test(b.textContent)).click(); await w(50);
-  ok('8: Keep trying puts the offer away', offer.classList.contains('away'));
+  ok('8: Keep trying brings the question back', !offer.classList.contains('offer') && /missing number/.test(offer.textContent));
   type('y-answer', '9'); btn(/^Check$/).click(); await w(30);
   ok('8: third wrong answer → the answer and its working', /Here’s how it works/.test($('.modal').textContent) && /y = 2 \+ 1 = 3/.test($('.modal').textContent));
   $('#modal-button').click(); await w(1900);
@@ -174,6 +178,32 @@
   ok('walkthrough: practice typing and Check never use a try', !$('.modal') && /2 tries/.test($('#tries').textContent));
   $('.tour-close').click(); await w(80);
   ok('walkthrough: the learner’s own answers come back', $('#m-answer').value === '4' && $('#c-answer').value === '4' && /2 tries/.test($('#tries').textContent));
+  // worksheet: a practice graph from the right-edge tab; plotting is never marked and uses no tries
+  location.hash = '#1'; await w(150); location.hash = '#6'; await w(250);
+  type('m-answer', '5'); type('c-answer', '5'); btn(/^Check$/).click(); await w(30); $('#modal-button').click();
+  ok('worksheet: the tab pulses after a wrong answer', $('#ws-tab').classList.contains('pulse') && !$('#ws-tab').hidden);
+  $('#ws-tab').click(); await w(600);
+  ok('worksheet: the tab slides the worksheet in and stops pulsing', $('#worksheet').classList.contains('open') && !$('#ws-tab').classList.contains('pulse'));
+  const wsTap = (gx, gy) => {
+    const sv = $('.ws-grid svg'), u = (520 - 68) / 12;
+    const p = new DOMPoint(34 + (gx + 6) * u, 520 - 34 - (gy + 6) * u).matrixTransform(sv.getScreenCTM());
+    $('.ws-grid').dispatchEvent(new PointerEvent('pointerdown', { clientX: p.x, clientY: p.y, bubbles: true }));
+  };
+  wsTap(-1, 0); wsTap(1, 4); await w(50);
+  ok('worksheet: two plotted points make a line and show across and up', /Across 2, up 4/.test($('.ws-read').textContent) && !!$('.ws-grid svg line[stroke="var(--orange)"]'));
+  ok('worksheet: plotting uses no tries', /2 tries/.test($('#tries').textContent));
+  $('.ws-close').click(); await w(50); $('#ws-tab').click(); await w(50);
+  ok('worksheet: closing and reopening keeps the points', /\(−1, 0\)/.test($('.ws-read').textContent));
+  $('.ws-close').click(); await w(50);
+  location.hash = '#7'; await w(250);
+  ok('worksheet: a new screen starts a fresh worksheet', $('.ws-read').textContent === '');
+  location.hash = '#1'; await w(250);
+  ok('worksheet: no tab on the opener', $('#ws-tab').hidden);
+  // Back: returns to the screen before
+  location.hash = '#6'; await w(250); location.hash = '#7'; await w(250);
+  $('#back').click(); await w(200);
+  ok('Back returns to the previous screen', hash() === '#6');
+  ok('Back is hidden on the opener', (location.hash = '#1', await w(200), $('#back').hidden));
   // admin preview: hidden from learners; needs the platform's admin role, not just the shortcut
   const ctrlM = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', ctrlKey: true, bubbles: true }));
   location.hash = '#7'; await w(250);

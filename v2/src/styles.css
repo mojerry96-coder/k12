@@ -59,6 +59,7 @@ p, h1, h2 { margin: 0; }
 .round[aria-pressed="true"] { background: #DDF1FD; }
 
 .header #help { left: calc(var(--u) * 1381); top: calc(var(--u) * 22); }
+.header #back { left: calc(var(--u) * 24); top: calc(var(--u) * 22); }
 
 /* ---------- buttons ---------- */
 .btn { border: calc(var(--u) * 2) solid #2E95D0; border-radius: calc(var(--u) * 46); background: linear-gradient(var(--btn-top), var(--btn-bot));
@@ -353,6 +354,10 @@ p, h1, h2 { margin: 0; }
   .header #audio { left: calc(var(--u) * 800); }
   .header #exit { left: calc(var(--u) * 880); }
   .header #help { left: calc(var(--u) * 720); }
+  .header #back { left: calc(var(--u) * 40); }
+  .header.has-back .brand { left: calc(var(--u) * 124); }
+  .header.has-back .divider { left: calc(var(--u) * 377); }
+  .header.has-back .title { left: calc(var(--u) * 405); }
   /* the board: graph full width, equation badge overlapping its top edge */
   #scene .g-board { flex-direction: column; gap: 0; }
   #scene .g-board .graph { width: 100%; aspect-ratio: var(--ar); }
@@ -430,3 +435,40 @@ p, h1, h2 { margin: 0; }
 .admin .stars { display: flex; gap: 1px; width: 46px; }
 .admin .stars svg { width: 14px; height: 14px; fill: #F5B400; }
 .admin .admin-return { width: 100%; height: 44px; font-size: 15px; border-radius: 22px; }
+
+/* ---------- worksheet: a tab on the right edge, and the practice graph that slides in ---------- */
+.ws-tab { position: fixed; right: 0; top: 50%; translate: 0 -50%; z-index: 18; display: flex; flex-direction: row; align-items: center; gap: 8px;
+  writing-mode: vertical-rl; padding: 16px 8px; border: 2px solid #2E95D0; border-right: 0; border-radius: 16px 0 0 16px;
+  background: linear-gradient(90deg, var(--btn-top), var(--btn-bot)); color: #fff; font: 700 15px var(--ui); letter-spacing: .03em; box-shadow: -4px 4px 0 var(--btn-edge); }
+.ws-tab svg { width: 22px; height: 22px; writing-mode: horizontal-tb; }
+.ws-tab.pulse { background: linear-gradient(90deg, #FF8A3D, var(--orange)); border-color: #E2540D; box-shadow: -4px 4px 0 #B8430A; }
+.worksheet { position: fixed; top: 12px; bottom: 12px; right: 12px; z-index: 19; width: min(440px, calc(100vw - 24px)); display: flex; flex-direction: column;
+  background: #fff; border: 2px solid #D3E5F2; border-radius: 26px; box-shadow: -10px 14px 40px rgba(14, 34, 54, .25); padding: 16px 16px 14px;
+  font-family: var(--ui); color: var(--ink); transform: translateX(calc(100% + 24px)); visibility: hidden; }
+.worksheet.open { transform: none; visibility: visible; }
+.ws-head { position: relative; font-size: 19px; padding: 6px 44px 4px 4px; }
+.ws-close { position: absolute; right: 0; top: 0; width: 38px; height: 38px; border-radius: 50%; border: 2px solid #BFE0F5; background: #FAFDFF; color: #0B78B5; display: grid; place-items: center; padding: 0; }
+.ws-close svg { width: 60%; height: 60%; }
+.ws-help { font-size: 14px; color: #4F6880; margin: 2px 4px 8px; }
+.ws-grid { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; border-radius: 16px; background: #F7FAFC; border: 2px solid #E3ECF3; cursor: crosshair; touch-action: none; }
+.ws-grid svg { width: 100%; height: 100%; max-height: 100%; display: block; }
+.ws-grid text { font-family: var(--ui); }
+.ws-grid .ws-n { font-size: 14px; fill: #5C6F82; }
+.ws-grid .ws-axis { font-size: 18px; font-style: italic; fill: var(--axis); }
+.ws-grid .ws-tag { font-size: 17px; font-weight: 800; paint-order: stroke; stroke: #F7FAFC; stroke-width: 5px; }
+.ws-grid .ws-pt { font-size: 15px; font-weight: 700; paint-order: stroke; stroke: #F7FAFC; stroke-width: 4px; }
+.ws-read { min-height: 2.6em; font-size: 14px; color: #314A62; margin: 8px 4px; line-height: 1.35; }
+.ws-tools { display: flex; gap: 10px; }
+.ws-tools .btn.small { flex: 1; height: 42px; font-size: 16px; border-radius: 22px; }
+@keyframes wsPulse { 0%, 100% { box-shadow: -4px 4px 0 #B8430A, 0 0 0 0 rgba(254, 96, 17, .55); } 60% { box-shadow: -4px 4px 0 #B8430A, 0 0 0 16px rgba(254, 96, 17, 0); } }
+@keyframes wsNudge { 0%, 100% { translate: 0 -50%; } 50% { translate: -6px -50%; } }
+.anim .ws-tab.pulse { animation: wsPulse 1.4s ease-out infinite, wsNudge 1.4s ease-in-out infinite; }
+.anim .worksheet { transition: transform 460ms var(--spring-soft), visibility 0s linear 460ms; }
+.anim .worksheet.open { transition: transform 460ms var(--spring-soft), visibility 0s; }
+.anim .ws-tab { transition: filter 160ms ease; }
+.anim .ws-tab:hover { filter: brightness(1.06); }
+@media (max-width: 600px) {
+  .ws-tab { padding: 10px 3px; gap: 6px; font-size: 12px; border-radius: 12px 0 0 12px; box-shadow: -3px 3px 0 var(--btn-edge); }
+  .ws-tab svg { width: 16px; height: 16px; }
+  .ws-tab.pulse { box-shadow: -3px 3px 0 #B8430A; }
+}

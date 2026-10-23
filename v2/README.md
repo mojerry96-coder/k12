@@ -12,9 +12,16 @@ The redesign: the 14 reference screens in `references/`, built from
   `tools/pingpong.py` keeps only the closed-beak stretch, played forwards and back), then every frame lifted with macOS
   Vision and repaired by `tools/matte.py` so pale head feathers are never cut (`tools/alphaclip.sh`);
   `tools/clipmeta.py` records where her resting pose sits so each clip lines up with the design.
-- **Fitila's bubble is timed:** it says the task for a few seconds and steps aside, then offers "Tap me for
-  a hint!"; the offer comes back whenever the learner has been still for a while. Tapping Fitila gives a
-  hint for that screen (on screen 4 she opens the hint screen).
+- **Fitila's bubble keeps the question on show.** When the learner has been still for a while, "Tap me for a
+  hint!" pops up for about 3 seconds and the question comes straight back. Tapping Fitila gives a hint for
+  that screen (on screen 4 she opens the hint screen). On the opener she waves, folds her wings, then points
+  (a 10-second loop; `tools/beakpatch.py` keeps her beak closed in the few frames where the model opened it).
+- **Worksheet:** a slim tab on the right edge of every question screen slides in a practice graph. Tap to plot
+  points; two points draw a line and show its across and up; Undo and Clear. It is never marked and never
+  uses a try, and it keeps its points until the learner moves to another screen. After a wrong answer Fitila
+  says to try it on the worksheet or in their book, and the tab pulses until it is opened.
+- **Back:** the header's back arrow leaves guided practice or the walkthrough, otherwise returns to the
+  previous screen.
 - **Answers are not given away:** B starts in the wrong place on screen 3 (drag it to (2, 2)); screen 4 asks
   "Across ?" / "Up ?"; the intercept graph marks points on the line, not the intercept; the targets screen
   starts with neither target hit.
@@ -46,7 +53,7 @@ through `postMessage` to the parent when embedded in a frame:
 
 - In: `window.GradientLabConfig = { level: 'Intermediate', role: 'admin' }` before the script, or a
   `gradientlab:config` event / message with `{ level, role }`, or `?level=intermediate` in the URL.
-- Out: `gradientlab:attempt` (correct, tries left), `gradientlab:support-offered`, `gradientlab:support`
+- Out: `gradientlab:attempt` (correct, tries left), `gradientlab:worksheet` (opened), `gradientlab:support-offered`, `gradientlab:support`
   (choice `try-together` / `keep-trying`, outcome `completed` / `left-early`, next `original-question` /
   `similar-question`), `gradientlab:tutorial` (start / finished / closed) and `gradientlab:complete`.
 
@@ -72,4 +79,4 @@ node tools/compare.mjs /tmp/cmp         # every screen beside its reference, at 
 | `assets/fonts/` | Patrick Hand (display) and SN Pro (interface), both SIL OFL |
 | `references/` | the 14 design screens and the logo file |
 | `media/fitila/` | the looping clips (`.webm`, `.mov`, transparent posters) and `clips.json` |
-| `tools/` | `lift.swift` / `lift_all.py` (pose cut-outs), `liftdir.swift` + `matte.py` + `alphaclip.sh` (transparent clips), `pingpong.py` (closed-beak loops), `clipmeta.py`, `compare.mjs` + `pair.py` (fidelity check) |
+| `tools/` | `lift.swift` / `lift_all.py` (pose cut-outs), `liftdir.swift` + `matte.py` + `alphaclip.sh` (transparent clips), `pingpong.py` and `beakpatch.py` (closed-beak loops), `clipmeta.py`, `compare.mjs` + `pair.py` (fidelity check) |

@@ -67,6 +67,7 @@ p, h1, h2 { margin: 0; }
 .round[aria-pressed="true"] { background: #DDF1FD; }
 
 .header #help { left: calc(var(--u) * 1381); top: calc(var(--u) * 22); }
+.header #back { left: calc(var(--u) * 24); top: calc(var(--u) * 22); }
 
 /* ---------- buttons ---------- */
 .btn { border: calc(var(--u) * 2) solid #2E95D0; border-radius: calc(var(--u) * 46); background: linear-gradient(var(--btn-top), var(--btn-bot));
@@ -361,6 +362,10 @@ p, h1, h2 { margin: 0; }
   .header #audio { left: calc(var(--u) * 800); }
   .header #exit { left: calc(var(--u) * 880); }
   .header #help { left: calc(var(--u) * 720); }
+  .header #back { left: calc(var(--u) * 40); }
+  .header.has-back .brand { left: calc(var(--u) * 124); }
+  .header.has-back .divider { left: calc(var(--u) * 377); }
+  .header.has-back .title { left: calc(var(--u) * 405); }
   /* the board: graph full width, equation badge overlapping its top edge */
   #scene .g-board { flex-direction: column; gap: 0; }
   #scene .g-board .graph { width: 100%; aspect-ratio: var(--ar); }
@@ -438,6 +443,43 @@ p, h1, h2 { margin: 0; }
 .admin .stars { display: flex; gap: 1px; width: 46px; }
 .admin .stars svg { width: 14px; height: 14px; fill: #F5B400; }
 .admin .admin-return { width: 100%; height: 44px; font-size: 15px; border-radius: 22px; }
+
+/* ---------- worksheet: a tab on the right edge, and the practice graph that slides in ---------- */
+.ws-tab { position: fixed; right: 0; top: 50%; translate: 0 -50%; z-index: 18; display: flex; flex-direction: row; align-items: center; gap: 8px;
+  writing-mode: vertical-rl; padding: 16px 8px; border: 2px solid #2E95D0; border-right: 0; border-radius: 16px 0 0 16px;
+  background: linear-gradient(90deg, var(--btn-top), var(--btn-bot)); color: #fff; font: 700 15px var(--ui); letter-spacing: .03em; box-shadow: -4px 4px 0 var(--btn-edge); }
+.ws-tab svg { width: 22px; height: 22px; writing-mode: horizontal-tb; }
+.ws-tab.pulse { background: linear-gradient(90deg, #FF8A3D, var(--orange)); border-color: #E2540D; box-shadow: -4px 4px 0 #B8430A; }
+.worksheet { position: fixed; top: 12px; bottom: 12px; right: 12px; z-index: 19; width: min(440px, calc(100vw - 24px)); display: flex; flex-direction: column;
+  background: #fff; border: 2px solid #D3E5F2; border-radius: 26px; box-shadow: -10px 14px 40px rgba(14, 34, 54, .25); padding: 16px 16px 14px;
+  font-family: var(--ui); color: var(--ink); transform: translateX(calc(100% + 24px)); visibility: hidden; }
+.worksheet.open { transform: none; visibility: visible; }
+.ws-head { position: relative; font-size: 19px; padding: 6px 44px 4px 4px; }
+.ws-close { position: absolute; right: 0; top: 0; width: 38px; height: 38px; border-radius: 50%; border: 2px solid #BFE0F5; background: #FAFDFF; color: #0B78B5; display: grid; place-items: center; padding: 0; }
+.ws-close svg { width: 60%; height: 60%; }
+.ws-help { font-size: 14px; color: #4F6880; margin: 2px 4px 8px; }
+.ws-grid { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; border-radius: 16px; background: #F7FAFC; border: 2px solid #E3ECF3; cursor: crosshair; touch-action: none; }
+.ws-grid svg { width: 100%; height: 100%; max-height: 100%; display: block; }
+.ws-grid text { font-family: var(--ui); }
+.ws-grid .ws-n { font-size: 14px; fill: #5C6F82; }
+.ws-grid .ws-axis { font-size: 18px; font-style: italic; fill: var(--axis); }
+.ws-grid .ws-tag { font-size: 17px; font-weight: 800; paint-order: stroke; stroke: #F7FAFC; stroke-width: 5px; }
+.ws-grid .ws-pt { font-size: 15px; font-weight: 700; paint-order: stroke; stroke: #F7FAFC; stroke-width: 4px; }
+.ws-read { min-height: 2.6em; font-size: 14px; color: #314A62; margin: 8px 4px; line-height: 1.35; }
+.ws-tools { display: flex; gap: 10px; }
+.ws-tools .btn.small { flex: 1; height: 42px; font-size: 16px; border-radius: 22px; }
+@keyframes wsPulse { 0%, 100% { box-shadow: -4px 4px 0 #B8430A, 0 0 0 0 rgba(254, 96, 17, .55); } 60% { box-shadow: -4px 4px 0 #B8430A, 0 0 0 16px rgba(254, 96, 17, 0); } }
+@keyframes wsNudge { 0%, 100% { translate: 0 -50%; } 50% { translate: -6px -50%; } }
+.anim .ws-tab.pulse { animation: wsPulse 1.4s ease-out infinite, wsNudge 1.4s ease-in-out infinite; }
+.anim .worksheet { transition: transform 460ms var(--spring-soft), visibility 0s linear 460ms; }
+.anim .worksheet.open { transition: transform 460ms var(--spring-soft), visibility 0s; }
+.anim .ws-tab { transition: filter 160ms ease; }
+.anim .ws-tab:hover { filter: brightness(1.06); }
+@media (max-width: 600px) {
+  .ws-tab { padding: 10px 3px; gap: 6px; font-size: 12px; border-radius: 12px 0 0 12px; box-shadow: -3px 3px 0 var(--btn-edge); }
+  .ws-tab svg { width: 16px; height: 16px; }
+  .ws-tab.pulse { box-shadow: -3px 3px 0 #B8430A; }
+}
 </style>
 </head>
 <body>
@@ -450,6 +492,9 @@ p, h1, h2 { margin: 0; }
 <div id="app">
   <main id="frame">
     <header class="header">
+      <button class="round" id="back" type="button" aria-label="Back" hidden>
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-9 9 9 9"/></svg>
+      </button>
       <div class="brand" aria-label="uLesson"><img class="icon" src="data:image/webp;base64,UklGRuQQAABXRUJQVlA4WAoAAAAQAAAAPAEAEgEAQUxQSBwCAAABkFDbdhRLT0IkPAlIiAQkxEHHAXFQOKAc8B1EAhKehCfh9sxUpG6PRMQEzHalS61T6WOQ16x9fkx1sUvNFVdsc46vJfSP6rjick3f+pz0RcSh4rIv7Nua9HRxcFz5xQGY4plCrrj46wOWdJYwOC6/BQBLZwiDowHbALB4uMHRhK0ATHqoaGjEdoDn44QZzdgQQNWD9A5KwNIRwgMt2RbAsJ8uIAYW3Sk6qAHTXT6hNdsD1u0wgB/wbrMBDIHHjQZwBN5tMoAl8G6DATyB6apPYAosrOjAFcw/p8YWDD9loAviTzxAGAs/SGAMHt9T4wzidyaQxoKI9GANiogYb1wlgTeY1ZiDGdRp3dt/t/9u/93+u/13++/23+2/23+3/27/3f67/Xf77/+Fnr/xFO5k7iTuyJUG1RhTmaq/JF+mkvpONcjb2/VPeyk2JpU3W/PyImpWec/16afzovLGa7JTWQ7y5ms5jxdhoD5PMgYhYbITWBQeqh3uGYSK48GKsLEcKgkfy3G8E0aWo3gnnCwHScLK5yGK0DIsBxiFmOq7mVAz76bckLpTEXKq72JCz7JLx4/gO0xC0LyDMiT4ZpNQtGymHAm+0YeQdNwosiRuY0LTuknhSd5EeRK2WISodYPClLJBx5S4zoSpwVd9UEXqqsyVcVXkSlolXNU1C1nEV3ywZVlR2DKv6NkyrohsySuULWmFsLXnTvw5axdWUDggog4AAHBYAJ0BKj0BEwE+MRiLRCIhoREJdKggAwSxt34+TFHgDM3ehf/3YcwB+gHqX/DbgB3Zl/7lAfgBdKz9/XPxy8g8GfR/xi/on/I/wXoJ52OR/cL90P8B7oHAA87fxj8W/0n9q/dn/P+8T+J/jH8lfy1/o/cA/gf8J/tX9d/bH+4/////+ADzAfyb+J/9H/Y/vt86/8l/qvsT/0n9c9gD+u/1T/7/8v2uPYA9AT9yPVo/yH/M/2P77fQ9+yf/o/2v7//QT/Lf7B/2vz/+QD0APQA9W/rT/RPAP9guU09jurI899ff2/9h8wO8HeE/x7+/flt+RnGxAA/Kf5R/l/t85yNIpOo/xf/e/xvnT/J/77/4P8T8A38z/qn/G7F/7K+yp+wgo7ZeIm+I6ryO+JD46FP0lZknqvz3BPu2XiJvj2w7petKk9OakrQdO+ZrDddGl4LC+JpV4S2Iqb49wUqJ0WvETfHsf1OTmpK0JJ6c1JWhJPTmt+6fhrm+Zw1zfM4a0dEkNjgqEUdgki+wyj6Jxaw3gwbYV/s4jX4q7Sa2QW+i6+7sGiHZWoWRgsLxNXRLgC/CGS1HYypc+pMpKfO1x9TgI8KW/PUPJtblf2T4PpIIGTen/LJ+lwGpQzrIzsm+rIZuc0pZU1ldwd72IIJkI/tRZtRJTjDGDJI8lIcbzoS2TPsoPLuSBscXhRkyCCUaSFbgKlwFJdyDWUZtUiV43B4+Q1yEPki6xy+pKeVsNHk+fFNqGvTmZ1b/wTt+bi3MlzuHzds6w21tauZXaNh6OR+nwXz89vKSkrOEmFoI/zkTVmzL5RkE/Ek9NrW4OLcac1JWhJPTmpK0JJ6coPF3MrlDmQU+yomuvojjNihlEnkWeLCRIj94JDSllxoizxYSJG3jUX1NIW8UBrUmCKmE3DAQFO4Z8GppVMdBlflcM+DU0qmPj0FFnQQtwvgAAP6VPtTRVgnG+0KtyOiCcM05vEDhfA2RY+vJeMifEKy6+r91/J12lL6yy3Xy14vCtRKGm4WxNor4Cc/8GdsMi0w1bhXVCKw8oIOD6EGSDzYSIBWo0Oq1R1IZuczYpl/2ezJNGBM0AfWHh+C/wt3O3xmttfBtmoEphYlkL4O0KJxpFMvzvZAVGQscb1vqbMOBP9D+7Xb72t+G57Mv2FiAfsivniJSCOZlnT2HzJVYvpjVgb05E188Amft8UDabPAmERMg2bWX//Egb27suyMccWx4hPvXiJ6fRBHT+xDv4ECBAGCyopWn7H1v3t1bl9Ygt3HtnN4YWkoHFf2pElvwu+FGyPXAU1m254aitB3Tky24gzJ/mjv/2baAEPQ1S5zEiK6HMbGf1Af5//WXvDTedDPMwKsq7c35i/kQNd1lwVLt27du/nJT2pAM+UrDYbDYbDYbDOnbqyDFzqyRDemiz4+p5lx70gAAAAAAAloDb+CfBdT13QpCQ2d7T2QxPBSqNZNaD63uatE9HauCiWqS5mQL+kzDrJHRNZjr6Lcn76HjnQsx3ggJ8S/A6aPCRy4LECeTvYuSW/YvN4vtHOyYYRaJuLPxpxYo/k1dFXuKxadobfQZ1HmXUfgJ380Yn49DSd3uP3mToPLw0L8c6+ZRGYrfGhvL2YAWMpeXTU+rIyrBVQ/5JJrmZjXlLfEo7Q3YJDjXifHFtiWJk05KggF3kqiGFTtlQCKOXcb2nhFm6vV5iRagX7eiykjSdWojRd9HMu27+QIDD7ImwHw04tPnXK/nG9ZTD+BEXmx6XQsJfOMuClEg2qV8rGdF6BSYLxwOSuGu3PD5ucv9c7+HcQhxOEDp2h1RseJGtcDnj1e3+2TlXj3rsXssl9iquOg7+V5+ZcJ/OB/+zKz9KNW5HUJoLu4KCeS2hYaZSBVKZ5etBH6pzhAM4FG2fnDkEc9tln+usAQfk+66ytfxzd83Js1eeT61J5QhzdN7fuzZyhmGCKPRyKIvcHb/D+dOcN4ukO4dNem0ofDp1301WlEK6k6OU+rJQfIRUYaBlwNKqEr+or/k4zzRAf7j3OqGwQjXBcmrNR7EbDyQP99kCOvUcIcHm+RQoh073mhBinyhrRFPTP9TPuMhE0XN/c2+JnXrvTg1bDO9E1bW/gr18J5luLnaUCsFPl/5x/D53LOIFgwnyv/ZxQQNjR4uoZDxb9/xJ4HmYYkPXonYTEs/MLeaqbO7bckRvS1xRYRVhD2tz/JYWnHHtjvcOx1DldGzEEnc0VxGfm8BXrodJmAtsmfoRPh7do9U2zJHOraveMpKnwDCtv/WLGVTc8ISZGO2KAC0ekSAveN2MCaJt2eunywHhB0Q/ZRt7fQIB/XuNlBBCwyOkqn3XrLnxe1XHnCZ5gh9kCmu6wptvm7kuJjT/3iR0gWtVlMpMwgBkqzCp9JoQ6cN6N5eenGAWmAa/UkQVsudTO9Wdya9d0vA7c4mUNIDjo6D5SHS4fk/L54jDqmsyiRubcXpegbeyj2XaYu2he37Ij17kbCgorVHU04NbX08LaYWimU0Yh5S42TfNkj2Qa7gPQzziLJGvMaYemgU10zY0gscU170d2WP+XIOht5VwQi5UwzI6E3u95HsUrmP10Hl2r9kQtYebzoLYTARxSwfqpJGFQ8l0VnhsFuDw1nc/jy3AGnFMtJPTJ6QJ9fRLZKbZVbYCWDaYRGinX3Y87/UcSK12ptpYzfI3ylq2LCJGYGEuJ7VeMDsiyEEHrM5f/FwQYy8Xa2+5jgNo/xp6cF0EQmhR7Haej2y7/ptWfUdGS7a7LvjJu26JP+5wYVxxZlSzsBU/vZf9E77sAEL55CrCtDdTOb+kEx0uyhuzOE9s63w4W1ViohqyIzKd2CyQob9mTHN/9Fl+7FO2nK5ni5SDwoKFRh78AQXZ38FFF73p/hhUKHSQizqZ0dUZlHAry1oiJuRCBiQDaDt8kACPMbMakx0FV/ejhmrOEx4SsYdLvrg2SXWF7HxXvt/SbatiXrQ3X1+JNpXiRW/jJjLqkbIJ2j5NRQHZOGUfwV9WXHfFB7oQVv2FNaCgk+xq6l1xBnF8q01H17JD9sWgnH9r3aLTzR8ZRj/QVBw2ExbF+AAdsrxuOjpU3Rg0nXyGGZS7VUDJmGg4xPTDs7aMQwm18vqgw6M2xV0hNqlU1p3T3HW8qWMcQqOeie169XUrtUokk1coSNkTYExAc1jkqERKHQX9ntnRDKqBajC6aQmWpDTWyExrMfxa0FD/gJNv0pn5SXVpKURowHSspzVI/TyQLd9SQ4cyplBE8zyItYlYHrGbbTnqb0O9wve8kEpL6TRm5KDfNGzf9DNsdnaTbmfQktjCviy/6iG6ha6SRTTnsT9maQ6xJMXsiGiZRD1IgWe/wba8f2JF4mNGOs2aauK6t64U3b2deMx0ATeJG2WgSZn/kp5EJrXgwi6CONJ6ENjImVnvWKfJa+bn0UCidRVu53EZFZTuQeP/H2eMARetBP54w4luyuKZyhBt1zd2CipEThOxOvOoGJy7gVwPq3OSYwjzmIFGl5SKMZJmlRvqC/U1n5xqH41SXLHb51zFwedWeeG+SmJy0tOtaqa6Fduk731VKhUriagAAAJW5+aMWb8LqB5gzTc/3FQ01D/QiDxfja/NycaGnRmTnkwO7tcAQyHQggbAZqklEnIFtM5P9S4PsDM7tCsFIGzK4sBEHrpgnlTbzBOZBUQY+TuQ5VSzhfhHijUXnCIlO6E7V4+TvcywKUg/FHvB5qXZ7ejiqyOHK8d8tPyZC72o7dbfhJqxxJnQvVXZ1mGi23LHrqAISLjHU17HqZatOIt+4MXp0qgncOwqdwZqWtSVOOA1YHTWe9QA+uRU/SDmBO1q+qSyT6aCRtksCvclmitqjSQlBVwk+EtkN+qXz1Bf+k0g8b/904LCr4Apf7e3mrbOhEhQm5Dhnx2HfHD0IqKUcz1APoSonFhlPqT3YFhPHrqPbzpZuT5Er6zu7kQu+DW0ezV7hOfJGNU0YQH/qr15hoOd1sYzH7VAbT8Ums5+PuK+hMcrsoqcSlIH/UXZuPzq7R/XgLiPgXXgWvIM0ZtFsuLzNyZqcFbIDS2zHAzXIonkmKwGrB30l2Y0alAMNP2uu/NG5gtBIKpadrh4hbkfcdcKIJe5NM4aP2EHcVcLpa7diczH/Yq1blj8ESOqmGwhstUT9TcLK5UBSEBR/w3NywWSfPMXvIY+n+/spKCQsvnpxuIfTTZdHS3vV6/43wI9UYQMaIppwII0F9CGCJK6NCkr/E+jAJkeQw+lmeak7uu+RZQPHcD+HvKspqM/x8+v4p5x08sIiVzG7wRRdCrIS36+bXvTyLDFxgielXYW9bZhOJzk8CRDW4EKADoil8uHhS1YnNcoAAOoswhgAAAAA/1PguyIBwAAzaEFj7Xu12fauwfzvdALsEfMaAmaQBQm8dmjoBdgj5jQEzSAKEX/RGn/+3X+oq0lBBH47lmn4CdBUkjNCk601yj2AKawBosEABy3kgnbklNlTu2VK5+eu1Uj6lsDZ7L/ZJv5dksVCoqWRpgN71QWYpmSZYdpmCn6XcU2IS5KEsnrvdM/rkps25tAmz330EkNaYsoeKgbpSZAyrFRjSc+006cANEf1XdQTeL9A+1LMmS4ZG3oZ4p0m/c/I7NKutOntuesxySRZJS6SwIkmWsUoJL/gTaZXu6fkL9Ctd8qu6nbCdOKXz+DyTMOXPgTgtmMXpZQXz/mTFOB3N187cpAS0cEADBntjCxIyX9/EomTFtH54UuG0iYYe3ET6RtRG4jHr/clYUB5hY0lK47v4cCoWW/DXP/Tabk+3oryL6xPcCxHYjGmc+az5irRfKxb9OyuDlDN1JTaYw57JfzP0vatnlqceBeTNIAABn1AIGna3nwgQzYB309Bj0rI4nvB1dM4+f79L616uCU33w+t2YEVeWySgM/E+tH3tPfOkXnOd0JnCExzCQixqcwFAAAAyt+xktQQKCETEMNb55Ex+zo5DpexpYAAAA" alt=""><img class="word" src="data:image/webp;base64,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" alt="uLesson"></div>
       <i class="divider" aria-hidden="true"></i>
       <div class="title">Gradient Lab</div>
@@ -490,8 +535,8 @@ const POSE = {
   celebrate: [636, 138, 418, 418], raise: [1115, 318, 380, 385], almost: [765, 295, 139, 147], success: [727, 296, 222, 178],
   thumbs: [1237, 379, 266, 357],
 };
-// Per clip: the clip's size and where Fitila's resting pose sits inside it (filled in by the build).
-const CLIPS = {"almost":[402,420,6,6,390,413],"celebrate":[642,600,25,9,582,583],"hint":[378,600,17,15,352,578],"point":[432,600,17,54,409,540],"puzzled":[350,600,10,7,333,586],"raise":[586,600,41,45,537,547],"side":[658,600,28,8,622,584],"success":[522,420,7,10,508,410],"think":[362,600,10,15,344,578],"thumbs":[454,600,8,8,437,584],"wave":[594,600,7,8,574,585],"wing":[494,600,10,9,477,583],"wingwave":[488,600,88,8,393,584]};
+// Per clip: the clip's size, where Fitila's resting pose sits inside it, and a fingerprint of its files (filled in by the build).
+const CLIPS = {"almost":[402,420,6,6,390,413,"30c9ddfbf5"],"celebrate":[642,600,25,9,582,583,"440852b5f8"],"hint":[378,600,17,15,352,578,"fd6e739a6c"],"point":[432,600,17,54,409,540,"c9f5e82b22"],"puzzled":[350,600,10,7,333,586,"ce1e0c227d"],"raise":[586,600,41,45,537,547,"09bbe2fcfb"],"side":[658,600,28,8,622,584,"801c26f6aa"],"success":[522,420,7,10,508,410,"a2965e7754"],"think":[362,600,10,15,344,578,"f1ff020220"],"thumbs":[454,600,8,8,437,584,"b951b5683e"],"wave":[582,600,9,26,555,567,"a0159459a0"],"wing":[494,600,10,9,477,583,"6d0ae4daaa"],"wingwave":[488,600,88,8,393,584,"2359a53262"]};
 const BUST = new Set(['almost', 'success']);
 
 // ---------- graphs: box, origin and unit size measured per screen ----------
@@ -609,13 +654,13 @@ function fitila(pose, b = POSE[pose], { into, stage = 2, anim = 'hop', cls = '' 
   el.style.setProperty('--ar', r[2] / r[3]);
   const clip = CLIPS[pose];
   if (clip && !reduced()) {
-    const [vw, vh, rx, ry, rw, rh] = clip;
+    const [vw, vh, rx, ry, rw, rh, ver] = clip, q = ver ? `?v=${ver}` : '';
     const v = document.createElement('video');
     Object.assign(v, { muted: true, loop: true, autoplay: true, playsInline: true, preload: 'auto' });
     v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('aria-hidden', 'true');
-    v.poster = `media/fitila/${pose}_poster.webp`;
+    v.poster = `media/fitila/${pose}_poster.webp${q}`;
     v.style.cssText = `width:${(vw / rw) * 100}%;height:${(vh / rh) * 100}%;left:${(-rx / rw) * 100}%;top:${(-ry / rh) * 100}%`;
-    v.innerHTML = `<source src="media/fitila/${pose}.mov" type='video/quicktime; codecs="hvc1"'><source src="media/fitila/${pose}.webm" type="video/webm">`;
+    v.innerHTML = `<source src="media/fitila/${pose}.mov${q}" type='video/quicktime; codecs="hvc1"'><source src="media/fitila/${pose}.webm${q}" type="video/webm">`;
     el.append(v);
     v.play?.().catch(() => {}); // a blocked autoplay just leaves the poster showing
   } else {
@@ -952,13 +997,13 @@ function failure(message, fields = [], working = null) {
   for (const id of fields) { const f = $('#' + id)?.closest('.field'); if (f) { f.classList.remove('wrong'); void f.offsetWidth; f.classList.add('wrong'); } }
   const skill = SUPPORT[page];
   emit('attempt', { skill: skill || null, correct: false, attemptsLeft: attempts });
-  if (skill && attempts === 1 && coach) { announce(message); offerSupport(); return; }
+  if (skill && attempts === 1 && coach) { announce(message); wsNudge(); offerSupport(); return; }
   if (skill && attempts === 0 && working) {
     modal({ title: 'Here’s how it works', body: working, pose: 'think', action: 'Got it', onAction: () => freshQuestion(true) });
     return;
   }
   const out = attempts === 0;
-  modal({ title: 'Almost!', body: out ? `${message} Let’s practise this step again.` : message, pose: 'almost',
+  modal({ title: 'Almost!', body: out ? `${message} Let’s practise this step again.` : message + wsNudge(), pose: 'almost',
     action: out ? 'Practise again' : 'Try again', remaining: attempts, onAction: () => { if (out) { attempts = 3; renderTries(); } } });
 }
 const par = (v) => (v < 0 ? `(${fmt(v)})` : fmt(v));
@@ -1004,7 +1049,7 @@ function check(fields, answers, next, message, working) {
 function confirmB() {
   if (tour) return;
   if (pointB[0] === 2 && pointB[1] === 2) go(4);
-  else modal({ title: 'Almost!', body: `B is at (${pointB.map(fmt).join(', ')}). Count from the middle to find (2, 2).`, pose: 'almost', action: 'Try again' });
+  else modal({ title: 'Almost!', body: `B is at (${pointB.map(fmt).join(', ')}). Count from the middle to find (2, 2).${wsNudge()}`, pose: 'almost', action: 'Try again' });
 }
 const hitCount = () => TARGETS.filter(([x, y]) => Math.abs(m * x + c - y) < 0.08).length;
 function updateHits() {
@@ -1019,11 +1064,11 @@ function updateHits() {
 }
 
 // =====================================================================================
-// Fitila's bubble: says the task for a few seconds, steps aside, offers "Tap me for a hint!",
-// and offers it again whenever the learner has been still for a while. After a second wrong
-// answer it offers to work through the idea together instead.
+// Fitila's bubble: the question stays on show. When the learner has been still for a while,
+// "Tap me for a hint!" pops up for a moment and the question comes straight back. After a second
+// wrong answer she offers to work through the idea together instead.
 // =====================================================================================
-const SAY_MS = 6500, TIP_MS = 4000, IDLE_MS = 14000;
+const TIP_MS = 3000, IDLE_MS = 14000;
 let coach = null;
 function coachStop() {
   if (!coach) return;
@@ -1038,12 +1083,11 @@ function coachStart({ quiet = false } = {}) {
   const t = b.querySelector('.bubble-text');
   coach = { b, f, say: t.innerHTML, text: t.textContent.replace(/\s+/g, ' ').trim(), timers: [], idle: 0, offered: false, offering: false };
   const entry = quiet ? 0 : parseFloat(b.style.getPropertyValue('--d')) || 0;
-  if (quiet) { b.classList.add('away'); bubbleSay(words('Your turn!')); coachLater(bubbleAway, 2600); }
-  else if (!offerOnArrival) coachLater(bubbleAway, entry + SAY_MS);
+  if (quiet) { bubbleSay(words('Your turn!')); coachLater(sayQuestion, 2600); }
   b.addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'together') { e.stopPropagation(); startGuided(); }
-    else if (act === 'keep') { e.stopPropagation(); coach.offering = false; emit('support', { skill: SUPPORT[page], choice: 'keep-trying' }); bubbleAway(); armIdle(); }
+    else if (act === 'keep') { e.stopPropagation(); coach.offering = false; emit('support', { skill: SUPPORT[page], choice: 'keep-trying' }); sayQuestion(); armIdle(); }
     else if (b.classList.contains('tip')) helpMe();
   });
   if (!f || !(HINTS[page] || page === 4 || page === 5)) return;
@@ -1053,8 +1097,7 @@ function coachStart({ quiet = false } = {}) {
   f.setAttribute('aria-label', `Fitila says: ${coach.text} Tap her for a hint.`);
   f.addEventListener('click', helpMe);
   f.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); helpMe(); } });
-  if (offerOnArrival) { offerOnArrival = false; coachLater(() => offerSupport(true), entry + 700); return; }
-  coachLater(offerHelp, entry + SAY_MS + 900);
+  if (offerOnArrival) { offerOnArrival = false; coachLater(() => offerSupport(true), entry + 700); }
 }
 function coachLater(fn, ms) { const c0 = coach; c0.timers.push(setTimeout(() => { if (coach === c0) fn(); }, ms)); }
 function armIdle() {
@@ -1073,23 +1116,24 @@ function bubbleSay(html, cls) {
   b.classList.add('again');
 }
 function bubbleAway() { if (!coach) return; coach.b.classList.remove('again'); coach.b.classList.add('away'); }
+function sayQuestion() { if (coach && !coach.offering) bubbleSay(coach.say); }
 function offerHelp() {
   if (!coach) return;
   const { b, f } = coach;
-  // never talk over a dialog, the walkthrough, a hidden tab, the instruction or an open offer
-  if (modalOpen || tour || document.hidden || coach.offering || !b.classList.contains('away')) { armIdle(); return; }
+  // never talk over a dialog, the walkthrough, a hidden tab or an open offer
+  if (modalOpen || tour || document.hidden || coach.offering || b.classList.contains('tip')) { armIdle(); return; }
   bubbleSay(`${words('Tap me')}<br>${words('for a hint!', 2)}`, 'tip');
   f.classList.remove('hey'); void f.offsetWidth; f.classList.add('hey');
   if (!coach.offered) { coach.offered = true; announce('Tap Fitila for a hint.'); }
-  coachLater(bubbleAway, TIP_MS);
+  coachLater(sayQuestion, TIP_MS); // a moment, then the question is back
   armIdle();
 }
 function helpMe() {
   if (!coach || tour) return;
   if (coach.offering) return; // her offer is already showing
-  bubbleAway();
   if (page === 4) { go(5); return; }
-  if (page === 5) { bubbleSay(coach.say); coachLater(bubbleAway, SAY_MS + 4000); return; } // the hint itself, said again
+  sayQuestion(); // the question stays in her bubble (on screen 5 it holds the hint itself)
+  if (page === 5) return;
   const h = HINTS[page];
   modal({ title: coach.text, body: typeof h === 'function' ? h() : h, pose: 'think', action: 'Got it' });
 }
@@ -1126,7 +1170,8 @@ function restoreState(s) {
     if (s.moved) { moved = true; const w = $('#walk'); if (w) { w.hidden = false; w.classList.add('cta'); } }
   }
 }
-function go(n, { restore = null, quiet = false } = {}) {
+const trail = []; // screens visited, for Back
+function go(n, { restore = null, quiet = false, back = false } = {}) {
   clearInterval(walkTimer);
   coachStop();
   if (tour) endTour(false, false);
@@ -1135,6 +1180,7 @@ function go(n, { restore = null, quiet = false } = {}) {
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
   $('#audio').setAttribute('aria-pressed', 'false');
   const keepTries = [4, 5].includes(page) && [4, 5].includes(n);
+  if (!back && page && n !== page && trail[trail.length - 1] !== page) trail.push(page);
   page = n;
   if (restore && qv[n] != null) qv[n] = restore.qv;
   if (!keepTries) attempts = 3;
@@ -1145,6 +1191,9 @@ function go(n, { restore = null, quiet = false } = {}) {
   coachStart({ quiet });
   armIdle();
   $('#help').hidden = !TOURS[n];
+  $('#back').hidden = n === 1;
+  $('.header').classList.toggle('has-back', n !== 1);
+  wsForPage(n);
   if (!quiet) announce(`Screen ${n}`);
 }
 // builds a screen into the scene; quiet = no entrance (coming back to work already in progress)
@@ -1187,10 +1236,10 @@ function renderLineLab() {
   equation([612, 89, 240, 64], '', board);
   graph(2, { m, c, ends: true }, board);
   fitila('point', undefined, { into: buddy });
-  bubble(['Make the line climb!'], [1183, 235, 362, 106], 44, [1338, 330, 1347, 378], { into: buddy });
+  bubble(['Make the line climb', 'from left to right to get', 'a positive slope.'], [1166, 168, 424, 172], 38, [1338, 336, 1350, 380], { into: buddy });
   const walk = button(`${ICON.walk} Walk the line`, [1302, 785, 308, 80], () => {
     if (tour) return;
-    if (m <= 0) { modal({ title: 'Make it climb!', body: 'Move m above zero so the line rises from left to right.', pose: 'point', action: 'Try again' }); return; }
+    if (m <= 0) { modal({ title: 'Make it climb!', body: `Move m above zero so the line rises from left to right.${wsNudge()}`, pose: 'point', action: 'Try again' }); return; }
     walkLine();
   }, { into: ctl, anim: '', pw: 560 });
   walk.style.cssText += '--iw:46';
@@ -1691,14 +1740,14 @@ function startTour() {
   const stepsFor = TOURS[page];
   if (!stepsFor || tour || guided) return;
   closeModal(false);
-  if (coach) { coach.timers.forEach(clearTimeout); clearTimeout(coach.idle); bubbleAway(); }
+  if (coach) { coach.timers.forEach(clearTimeout); clearTimeout(coach.idle); sayQuestion(); }
   tour = { page, i: -1, steps: stepsFor(), snap: snapshot(), cleanup: null, targets: [], raf: 0, pA: null, pB: null };
   emit('tutorial', { action: 'start' });
   const el = make('div', 'tour');
   el.id = 'tour';
   el.innerHTML = `<div class="tour-spot"></div><div class="tour-hand">${HAND}</div>
     <div class="tour-tip" id="tour-tip" role="dialog" aria-label="How to play">
-      <img class="tour-fitila" src="media/fitila/point_poster.webp" alt="">
+      <img class="tour-fitila" src="media/fitila/point_poster.webp${CLIPS.point?.[6] ? `?v=${CLIPS.point[6]}` : ''}" alt="">
       <div class="tour-body"><p class="tour-say" id="tour-say" aria-live="polite"></p>
         <div class="tour-nav"><span class="tour-dots" aria-hidden="true"></span><button type="button" class="tour-skip">Skip</button>
           <button type="button" class="btn small outline tour-back">Back</button><button type="button" class="btn small tour-next">Next</button></div></div>
@@ -1839,8 +1888,11 @@ function adminPanel(open = !$('#admin')) {
   $('[data-level]', el).focus({ preventScroll: true });
 }
 document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'm') {
-    if (!platform.admin) return; // the shortcut alone grants nothing
+  if (e.ctrlKey && !e.metaKey && !e.altKey && (e.code === 'KeyM' || e.key.toLowerCase() === 'm')) {
+    if (!platform.admin) { // the shortcut alone grants nothing; tell developers why in the console only
+      console.info('Gradient Lab: the level panel needs admin access (the platform’s role: "admin", or ?admin on localhost / file://).');
+      return;
+    }
     e.preventDefault();
     adminPanel();
   }
@@ -1861,6 +1913,118 @@ function configure(cfg = {}) {
 addEventListener('gradientlab:config', (e) => configure(e.detail));
 addEventListener('message', (e) => { if (e.source === window.parent && e.data?.type === 'gradientlab:config') configure(e.data); });
 adminReady();
+
+// =====================================================================================
+// Worksheet: a practice graph that slides in from the right-edge tab, on every question screen.
+// Tap (or arrow keys + Enter) to plot points; two points draw a line and show its across and up.
+// It is scratch paper only: nothing on it is marked, used as a try, or tells the answer.
+// It keeps its points until the learner moves to a different screen.
+// =====================================================================================
+const WS = { range: 6, size: 520, pad: 34 };
+const worksheet = { page: null, pts: [], cursor: null };
+const wsScreen = (n) => ![1, 10].includes(n);
+function wsSetup() {
+  const tab = make('button', 'ws-tab', `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg><span>Worksheet</span>`);
+  tab.id = 'ws-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'worksheet');
+  tab.setAttribute('aria-expanded', 'false');
+  tab.addEventListener('click', () => wsOpen(!$('#worksheet').classList.contains('open')));
+  const panel = make('aside', 'worksheet', `<div class="ws-head"><b id="ws-title">My worksheet</b>
+      <button type="button" class="ws-close" aria-label="Close the worksheet">${CLOSE}</button></div>
+    <p class="ws-help">Tap the grid to plot points. Two points make a line.</p>
+    <div class="ws-grid" tabindex="0" role="application" aria-label="Worksheet grid. Tap to plot a point, or use the arrow keys and Enter."></div>
+    <p class="ws-read" aria-live="polite"></p>
+    <div class="ws-tools"><button type="button" class="btn small outline ws-undo">Undo</button><button type="button" class="btn small outline ws-clear">Clear</button></div>`);
+  panel.id = 'worksheet';
+  panel.setAttribute('aria-labelledby', 'ws-title');
+  panel.inert = true;
+  document.body.append(tab, panel);
+  $('.ws-close', panel).addEventListener('click', () => wsOpen(false));
+  $('.ws-undo', panel).addEventListener('click', () => { worksheet.pts.pop(); wsDraw(); });
+  $('.ws-clear', panel).addEventListener('click', () => { worksheet.pts = []; wsDraw(); });
+  const grid = $('.ws-grid', panel);
+  grid.addEventListener('pointerdown', (e) => {
+    const svg = grid.querySelector('svg'), p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+    wsPlot([Math.round(wsFromX(p.x)), Math.round(wsFromY(p.y))]);
+  });
+  grid.addEventListener('keydown', (e) => {
+    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    const cu = worksheet.cursor || [0, 0];
+    if (step) { e.preventDefault(); worksheet.cursor = cu.map((v, i) => Math.max(-WS.range, Math.min(WS.range, v + step[i]))); wsDraw(); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wsPlot(cu); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open') && !modalOpen && !tour) wsOpen(false); });
+  wsDraw();
+}
+const wsUnit = () => (WS.size - WS.pad * 2) / (WS.range * 2);
+const wsX = (v) => WS.pad + (v + WS.range) * wsUnit(), wsY = (v) => WS.size - WS.pad - (v + WS.range) * wsUnit();
+const wsFromX = (px) => (px - WS.pad) / wsUnit() - WS.range, wsFromY = (py) => (WS.size - WS.pad - py) / wsUnit() - WS.range;
+function wsPlot(p) {
+  if (Math.abs(p[0]) > WS.range || Math.abs(p[1]) > WS.range) return;
+  const i = worksheet.pts.findIndex((q) => same(q, p));
+  if (i >= 0) worksheet.pts.splice(i, 1); // tapping a point again takes it off
+  else worksheet.pts.push(p);
+  wsDraw();
+}
+function wsDraw() {
+  const grid = $('.ws-grid');
+  if (!grid) return;
+  const R = WS.range, S = WS.size, u = wsUnit();
+  let s = `<svg viewBox="0 0 ${S} ${S}" aria-hidden="true"><defs><marker id="ws-ah" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path d="M2 2L10 6L2 10Z" fill="var(--axis)"/></marker>
+    <clipPath id="ws-clip"><rect x="${wsX(-R)}" y="${wsY(R)}" width="${wsX(R) - wsX(-R)}" height="${wsY(-R) - wsY(R)}"/></clipPath></defs>`;
+  for (let v = -R; v <= R; v++) s += `<line x1="${wsX(v)}" y1="${wsY(-R)}" x2="${wsX(v)}" y2="${wsY(R)}" stroke="#DCE3EA" stroke-width="1.2"/><line x1="${wsX(-R)}" y1="${wsY(v)}" x2="${wsX(R)}" y2="${wsY(v)}" stroke="#DCE3EA" stroke-width="1.2"/>`;
+  s += `<line x1="${wsX(-R) - 10}" y1="${wsY(0)}" x2="${wsX(R) + 12}" y2="${wsY(0)}" stroke="var(--axis)" stroke-width="2" marker-start="url(#ws-ah)" marker-end="url(#ws-ah)"/>`;
+  s += `<line x1="${wsX(0)}" y1="${wsY(-R) + 10}" x2="${wsX(0)}" y2="${wsY(R) - 12}" stroke="var(--axis)" stroke-width="2" marker-start="url(#ws-ah)" marker-end="url(#ws-ah)"/>`;
+  for (let v = -R; v <= R; v += 2) if (v) s += `<text x="${wsX(v)}" y="${wsY(0) + 20}" text-anchor="middle" class="ws-n">${fmt(v)}</text><text x="${wsX(0) - 8}" y="${wsY(v) + 5}" text-anchor="end" class="ws-n">${fmt(v)}</text>`;
+  s += `<text x="${wsX(R) + 4}" y="${wsY(0) - 10}" class="ws-axis">x</text><text x="${wsX(0) + 10}" y="${wsY(R) - 2}" class="ws-axis">y</text>`;
+  const pts = worksheet.pts, read = [];
+  if (pts.length >= 2) {
+    const a = pts[pts.length - 2], b = pts[pts.length - 1], d = [b[0] - a[0], b[1] - a[1]];
+    s += `<line clip-path="url(#ws-clip)" x1="${wsX(a[0] - d[0] * 20)}" y1="${wsY(a[1] - d[1] * 20)}" x2="${wsX(a[0] + d[0] * 20)}" y2="${wsY(a[1] + d[1] * 20)}" stroke="var(--orange)" stroke-width="3.5" stroke-linecap="round"/>`;
+    if (d[0] && d[1]) {
+      const corner = [b[0], a[1]];
+      s += `<line x1="${wsX(a[0])}" y1="${wsY(a[1])}" x2="${wsX(corner[0])}" y2="${wsY(corner[1])}" stroke="#1C8FD8" stroke-width="3" stroke-dasharray="8 6"/>`;
+      s += `<line x1="${wsX(corner[0])}" y1="${wsY(corner[1])}" x2="${wsX(b[0])}" y2="${wsY(b[1])}" stroke="#12A066" stroke-width="3" stroke-dasharray="8 6"/>`;
+      s += `<text x="${(wsX(a[0]) + wsX(corner[0])) / 2}" y="${wsY(a[1]) + (d[1] > 0 ? 22 : -10)}" text-anchor="middle" class="ws-tag" style="fill:#1C8FD8">across ${fmt(d[0])}</text>`;
+      s += `<text x="${wsX(b[0]) + (d[0] > 0 ? 10 : -10)}" y="${(wsY(corner[1]) + wsY(b[1])) / 2 + 6}" text-anchor="${d[0] > 0 ? 'start' : 'end'}" class="ws-tag" style="fill:#12A066">up ${fmt(d[1])}</text>`;
+    }
+    read.push(d[0] ? `Across ${fmt(d[0])}, up ${fmt(d[1])}.` : 'That line goes straight up and down.');
+  }
+  pts.forEach((p, i) => {
+    const col = i === pts.length - 1 ? '#7A4BD8' : '#1EA1E6';
+    s += `<circle cx="${wsX(p[0])}" cy="${wsY(p[1])}" r="${u * 0.24}" fill="${col}" stroke="#fff" stroke-width="3"/><text x="${wsX(p[0]) + 10}" y="${wsY(p[1]) - 10}" class="ws-pt" style="fill:${col}">(${p.map(fmt).join(', ')})</text>`;
+  });
+  if (worksheet.cursor) s += `<circle cx="${wsX(worksheet.cursor[0])}" cy="${wsY(worksheet.cursor[1])}" r="${u * 0.42}" fill="none" stroke="#FFBD20" stroke-width="3" stroke-dasharray="6 4"/>`;
+  grid.innerHTML = `${s}</svg>`;
+  if (pts.length) read.unshift(`Points: ${pts.map((p) => `(${p.map(fmt).join(', ')})`).join(', ')}.`);
+  $('.ws-read').textContent = read.join(' ');
+  $('.ws-undo').disabled = $('.ws-clear').disabled = !pts.length;
+}
+function wsOpen(open) {
+  const panel = $('#worksheet'), tab = $('#ws-tab');
+  if (!panel) return;
+  panel.classList.toggle('open', open);
+  panel.inert = !open;
+  tab.setAttribute('aria-expanded', String(open));
+  if (open) {
+    tab.classList.remove('pulse');
+    emit('worksheet', { action: 'open' });
+    setTimeout(() => $('.ws-grid', panel).focus({ preventScroll: true }), 50);
+  } else if (panel.contains(document.activeElement)) tab.focus({ preventScroll: true });
+}
+// after a wrong answer: Fitila points the learner to the worksheet (or their book) and the tab pulses
+function wsNudge() {
+  if (!wsScreen(page)) return '';
+  if (!$('#worksheet')?.classList.contains('open')) $('#ws-tab').classList.add('pulse');
+  return ' Try it on your worksheet or in your book.';
+}
+// each screen gets a fresh worksheet; coming back to the same screen keeps it
+function wsForPage(n) {
+  $('#ws-tab').hidden = !wsScreen(n);
+  if (!wsScreen(n)) wsOpen(false);
+  if (worksheet.page !== n) { worksheet.page = n; worksheet.pts = []; worksheet.cursor = null; $('#ws-tab').classList.remove('pulse'); wsDraw(); }
+}
+wsSetup();
 
 // ---------- keep the focused answer box (and its button) above an on-screen keyboard ----------
 if (window.visualViewport) {
@@ -1890,6 +2054,14 @@ $('#audio').addEventListener('click', () => {
   speechSynthesis.speak(u);
 });
 $('#help').addEventListener('click', () => startTour());
+// Back: leaves guided practice or the walkthrough first, otherwise returns to the previous screen
+$('#back').addEventListener('click', () => {
+  if (tour) { endTour(false); return; }
+  if (guided) { endGuided('back'); return; }
+  let prev = trail.pop();
+  while (prev === page) prev = trail.pop();
+  go(prev ?? 1, { back: true });
+});
 $('#exit').addEventListener('click', () => modal({ title: 'Leave Gradient Lab?', body: 'You can come back to the welcome screen.', pose: 'think', action: 'Back to start', onAction: () => go(1) }));
 document.documentElement.classList.toggle('anim', !reduced());
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', () => document.documentElement.classList.toggle('anim', !reduced()));

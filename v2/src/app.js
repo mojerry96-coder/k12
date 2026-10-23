@@ -20,7 +20,7 @@ const POSE = {
   celebrate: [636, 138, 418, 418], raise: [1115, 318, 380, 385], almost: [765, 295, 139, 147], success: [727, 296, 222, 178],
   thumbs: [1237, 379, 266, 357],
 };
-// Per clip: the clip's size and where Fitila's resting pose sits inside it (filled in by the build).
+// Per clip: the clip's size, where Fitila's resting pose sits inside it, and a fingerprint of its files (filled in by the build).
 const CLIPS = /*CLIPS*/ {};
 const BUST = new Set(['almost', 'success']);
 
@@ -139,13 +139,13 @@ function fitila(pose, b = POSE[pose], { into, stage = 2, anim = 'hop', cls = '' 
   el.style.setProperty('--ar', r[2] / r[3]);
   const clip = CLIPS[pose];
   if (clip && !reduced()) {
-    const [vw, vh, rx, ry, rw, rh] = clip;
+    const [vw, vh, rx, ry, rw, rh, ver] = clip, q = ver ? `?v=${ver}` : '';
     const v = document.createElement('video');
     Object.assign(v, { muted: true, loop: true, autoplay: true, playsInline: true, preload: 'auto' });
     v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('aria-hidden', 'true');
-    v.poster = `media/fitila/${pose}_poster.webp`;
+    v.poster = `media/fitila/${pose}_poster.webp${q}`;
     v.style.cssText = `width:${(vw / rw) * 100}%;height:${(vh / rh) * 100}%;left:${(-rx / rw) * 100}%;top:${(-ry / rh) * 100}%`;
-    v.innerHTML = `<source src="media/fitila/${pose}.mov" type='video/quicktime; codecs="hvc1"'><source src="media/fitila/${pose}.webm" type="video/webm">`;
+    v.innerHTML = `<source src="media/fitila/${pose}.mov${q}" type='video/quicktime; codecs="hvc1"'><source src="media/fitila/${pose}.webm${q}" type="video/webm">`;
     el.append(v);
     v.play?.().catch(() => {}); // a blocked autoplay just leaves the poster showing
   } else {
@@ -482,13 +482,13 @@ function failure(message, fields = [], working = null) {
   for (const id of fields) { const f = $('#' + id)?.closest('.field'); if (f) { f.classList.remove('wrong'); void f.offsetWidth; f.classList.add('wrong'); } }
   const skill = SUPPORT[page];
   emit('attempt', { skill: skill || null, correct: false, attemptsLeft: attempts });
-  if (skill && attempts === 1 && coach) { announce(message); offerSupport(); return; }
+  if (skill && attempts === 1 && coach) { announce(message); wsNudge(); offerSupport(); return; }
   if (skill && attempts === 0 && working) {
     modal({ title: 'Here’s how it works', body: working, pose: 'think', action: 'Got it', onAction: () => freshQuestion(true) });
     return;
   }
   const out = attempts === 0;
-  modal({ title: 'Almost!', body: out ? `${message} Let’s practise this step again.` : message, pose: 'almost',
+  modal({ title: 'Almost!', body: out ? `${message} Let’s practise this step again.` : message + wsNudge(), pose: 'almost',
     action: out ? 'Practise again' : 'Try again', remaining: attempts, onAction: () => { if (out) { attempts = 3; renderTries(); } } });
 }
 const par = (v) => (v < 0 ? `(${fmt(v)})` : fmt(v));
@@ -534,7 +534,7 @@ function check(fields, answers, next, message, working) {
 function confirmB() {
   if (tour) return;
   if (pointB[0] === 2 && pointB[1] === 2) go(4);
-  else modal({ title: 'Almost!', body: `B is at (${pointB.map(fmt).join(', ')}). Count from the middle to find (2, 2).`, pose: 'almost', action: 'Try again' });
+  else modal({ title: 'Almost!', body: `B is at (${pointB.map(fmt).join(', ')}). Count from the middle to find (2, 2).${wsNudge()}`, pose: 'almost', action: 'Try again' });
 }
 const hitCount = () => TARGETS.filter(([x, y]) => Math.abs(m * x + c - y) < 0.08).length;
 function updateHits() {
@@ -549,11 +549,11 @@ function updateHits() {
 }
 
 // =====================================================================================
-// Fitila's bubble: says the task for a few seconds, steps aside, offers "Tap me for a hint!",
-// and offers it again whenever the learner has been still for a while. After a second wrong
-// answer it offers to work through the idea together instead.
+// Fitila's bubble: the question stays on show. When the learner has been still for a while,
+// "Tap me for a hint!" pops up for a moment and the question comes straight back. After a second
+// wrong answer she offers to work through the idea together instead.
 // =====================================================================================
-const SAY_MS = 6500, TIP_MS = 4000, IDLE_MS = 14000;
+const TIP_MS = 3000, IDLE_MS = 14000;
 let coach = null;
 function coachStop() {
   if (!coach) return;
@@ -568,12 +568,11 @@ function coachStart({ quiet = false } = {}) {
   const t = b.querySelector('.bubble-text');
   coach = { b, f, say: t.innerHTML, text: t.textContent.replace(/\s+/g, ' ').trim(), timers: [], idle: 0, offered: false, offering: false };
   const entry = quiet ? 0 : parseFloat(b.style.getPropertyValue('--d')) || 0;
-  if (quiet) { b.classList.add('away'); bubbleSay(words('Your turn!')); coachLater(bubbleAway, 2600); }
-  else if (!offerOnArrival) coachLater(bubbleAway, entry + SAY_MS);
+  if (quiet) { bubbleSay(words('Your turn!')); coachLater(sayQuestion, 2600); }
   b.addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'together') { e.stopPropagation(); startGuided(); }
-    else if (act === 'keep') { e.stopPropagation(); coach.offering = false; emit('support', { skill: SUPPORT[page], choice: 'keep-trying' }); bubbleAway(); armIdle(); }
+    else if (act === 'keep') { e.stopPropagation(); coach.offering = false; emit('support', { skill: SUPPORT[page], choice: 'keep-trying' }); sayQuestion(); armIdle(); }
     else if (b.classList.contains('tip')) helpMe();
   });
   if (!f || !(HINTS[page] || page === 4 || page === 5)) return;
@@ -583,8 +582,7 @@ function coachStart({ quiet = false } = {}) {
   f.setAttribute('aria-label', `Fitila says: ${coach.text} Tap her for a hint.`);
   f.addEventListener('click', helpMe);
   f.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); helpMe(); } });
-  if (offerOnArrival) { offerOnArrival = false; coachLater(() => offerSupport(true), entry + 700); return; }
-  coachLater(offerHelp, entry + SAY_MS + 900);
+  if (offerOnArrival) { offerOnArrival = false; coachLater(() => offerSupport(true), entry + 700); }
 }
 function coachLater(fn, ms) { const c0 = coach; c0.timers.push(setTimeout(() => { if (coach === c0) fn(); }, ms)); }
 function armIdle() {
@@ -603,23 +601,24 @@ function bubbleSay(html, cls) {
   b.classList.add('again');
 }
 function bubbleAway() { if (!coach) return; coach.b.classList.remove('again'); coach.b.classList.add('away'); }
+function sayQuestion() { if (coach && !coach.offering) bubbleSay(coach.say); }
 function offerHelp() {
   if (!coach) return;
   const { b, f } = coach;
-  // never talk over a dialog, the walkthrough, a hidden tab, the instruction or an open offer
-  if (modalOpen || tour || document.hidden || coach.offering || !b.classList.contains('away')) { armIdle(); return; }
+  // never talk over a dialog, the walkthrough, a hidden tab or an open offer
+  if (modalOpen || tour || document.hidden || coach.offering || b.classList.contains('tip')) { armIdle(); return; }
   bubbleSay(`${words('Tap me')}<br>${words('for a hint!', 2)}`, 'tip');
   f.classList.remove('hey'); void f.offsetWidth; f.classList.add('hey');
   if (!coach.offered) { coach.offered = true; announce('Tap Fitila for a hint.'); }
-  coachLater(bubbleAway, TIP_MS);
+  coachLater(sayQuestion, TIP_MS); // a moment, then the question is back
   armIdle();
 }
 function helpMe() {
   if (!coach || tour) return;
   if (coach.offering) return; // her offer is already showing
-  bubbleAway();
   if (page === 4) { go(5); return; }
-  if (page === 5) { bubbleSay(coach.say); coachLater(bubbleAway, SAY_MS + 4000); return; } // the hint itself, said again
+  sayQuestion(); // the question stays in her bubble (on screen 5 it holds the hint itself)
+  if (page === 5) return;
   const h = HINTS[page];
   modal({ title: coach.text, body: typeof h === 'function' ? h() : h, pose: 'think', action: 'Got it' });
 }
@@ -656,7 +655,8 @@ function restoreState(s) {
     if (s.moved) { moved = true; const w = $('#walk'); if (w) { w.hidden = false; w.classList.add('cta'); } }
   }
 }
-function go(n, { restore = null, quiet = false } = {}) {
+const trail = []; // screens visited, for Back
+function go(n, { restore = null, quiet = false, back = false } = {}) {
   clearInterval(walkTimer);
   coachStop();
   if (tour) endTour(false, false);
@@ -665,6 +665,7 @@ function go(n, { restore = null, quiet = false } = {}) {
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
   $('#audio').setAttribute('aria-pressed', 'false');
   const keepTries = [4, 5].includes(page) && [4, 5].includes(n);
+  if (!back && page && n !== page && trail[trail.length - 1] !== page) trail.push(page);
   page = n;
   if (restore && qv[n] != null) qv[n] = restore.qv;
   if (!keepTries) attempts = 3;
@@ -675,6 +676,9 @@ function go(n, { restore = null, quiet = false } = {}) {
   coachStart({ quiet });
   armIdle();
   $('#help').hidden = !TOURS[n];
+  $('#back').hidden = n === 1;
+  $('.header').classList.toggle('has-back', n !== 1);
+  wsForPage(n);
   if (!quiet) announce(`Screen ${n}`);
 }
 // builds a screen into the scene; quiet = no entrance (coming back to work already in progress)
@@ -717,10 +721,10 @@ function renderLineLab() {
   equation([612, 89, 240, 64], '', board);
   graph(2, { m, c, ends: true }, board);
   fitila('point', undefined, { into: buddy });
-  bubble(['Make the line climb!'], [1183, 235, 362, 106], 44, [1338, 330, 1347, 378], { into: buddy });
+  bubble(['Make the line climb', 'from left to right to get', 'a positive slope.'], [1166, 168, 424, 172], 38, [1338, 336, 1350, 380], { into: buddy });
   const walk = button(`${ICON.walk} Walk the line`, [1302, 785, 308, 80], () => {
     if (tour) return;
-    if (m <= 0) { modal({ title: 'Make it climb!', body: 'Move m above zero so the line rises from left to right.', pose: 'point', action: 'Try again' }); return; }
+    if (m <= 0) { modal({ title: 'Make it climb!', body: `Move m above zero so the line rises from left to right.${wsNudge()}`, pose: 'point', action: 'Try again' }); return; }
     walkLine();
   }, { into: ctl, anim: '', pw: 560 });
   walk.style.cssText += '--iw:46';
@@ -1221,14 +1225,14 @@ function startTour() {
   const stepsFor = TOURS[page];
   if (!stepsFor || tour || guided) return;
   closeModal(false);
-  if (coach) { coach.timers.forEach(clearTimeout); clearTimeout(coach.idle); bubbleAway(); }
+  if (coach) { coach.timers.forEach(clearTimeout); clearTimeout(coach.idle); sayQuestion(); }
   tour = { page, i: -1, steps: stepsFor(), snap: snapshot(), cleanup: null, targets: [], raf: 0, pA: null, pB: null };
   emit('tutorial', { action: 'start' });
   const el = make('div', 'tour');
   el.id = 'tour';
   el.innerHTML = `<div class="tour-spot"></div><div class="tour-hand">${HAND}</div>
     <div class="tour-tip" id="tour-tip" role="dialog" aria-label="How to play">
-      <img class="tour-fitila" src="media/fitila/point_poster.webp" alt="">
+      <img class="tour-fitila" src="media/fitila/point_poster.webp${CLIPS.point?.[6] ? `?v=${CLIPS.point[6]}` : ''}" alt="">
       <div class="tour-body"><p class="tour-say" id="tour-say" aria-live="polite"></p>
         <div class="tour-nav"><span class="tour-dots" aria-hidden="true"></span><button type="button" class="tour-skip">Skip</button>
           <button type="button" class="btn small outline tour-back">Back</button><button type="button" class="btn small tour-next">Next</button></div></div>
@@ -1369,8 +1373,11 @@ function adminPanel(open = !$('#admin')) {
   $('[data-level]', el).focus({ preventScroll: true });
 }
 document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'm') {
-    if (!platform.admin) return; // the shortcut alone grants nothing
+  if (e.ctrlKey && !e.metaKey && !e.altKey && (e.code === 'KeyM' || e.key.toLowerCase() === 'm')) {
+    if (!platform.admin) { // the shortcut alone grants nothing; tell developers why in the console only
+      console.info('Gradient Lab: the level panel needs admin access (the platform’s role: "admin", or ?admin on localhost / file://).');
+      return;
+    }
     e.preventDefault();
     adminPanel();
   }
@@ -1391,6 +1398,118 @@ function configure(cfg = {}) {
 addEventListener('gradientlab:config', (e) => configure(e.detail));
 addEventListener('message', (e) => { if (e.source === window.parent && e.data?.type === 'gradientlab:config') configure(e.data); });
 adminReady();
+
+// =====================================================================================
+// Worksheet: a practice graph that slides in from the right-edge tab, on every question screen.
+// Tap (or arrow keys + Enter) to plot points; two points draw a line and show its across and up.
+// It is scratch paper only: nothing on it is marked, used as a try, or tells the answer.
+// It keeps its points until the learner moves to a different screen.
+// =====================================================================================
+const WS = { range: 6, size: 520, pad: 34 };
+const worksheet = { page: null, pts: [], cursor: null };
+const wsScreen = (n) => ![1, 10].includes(n);
+function wsSetup() {
+  const tab = make('button', 'ws-tab', `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg><span>Worksheet</span>`);
+  tab.id = 'ws-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'worksheet');
+  tab.setAttribute('aria-expanded', 'false');
+  tab.addEventListener('click', () => wsOpen(!$('#worksheet').classList.contains('open')));
+  const panel = make('aside', 'worksheet', `<div class="ws-head"><b id="ws-title">My worksheet</b>
+      <button type="button" class="ws-close" aria-label="Close the worksheet">${CLOSE}</button></div>
+    <p class="ws-help">Tap the grid to plot points. Two points make a line.</p>
+    <div class="ws-grid" tabindex="0" role="application" aria-label="Worksheet grid. Tap to plot a point, or use the arrow keys and Enter."></div>
+    <p class="ws-read" aria-live="polite"></p>
+    <div class="ws-tools"><button type="button" class="btn small outline ws-undo">Undo</button><button type="button" class="btn small outline ws-clear">Clear</button></div>`);
+  panel.id = 'worksheet';
+  panel.setAttribute('aria-labelledby', 'ws-title');
+  panel.inert = true;
+  document.body.append(tab, panel);
+  $('.ws-close', panel).addEventListener('click', () => wsOpen(false));
+  $('.ws-undo', panel).addEventListener('click', () => { worksheet.pts.pop(); wsDraw(); });
+  $('.ws-clear', panel).addEventListener('click', () => { worksheet.pts = []; wsDraw(); });
+  const grid = $('.ws-grid', panel);
+  grid.addEventListener('pointerdown', (e) => {
+    const svg = grid.querySelector('svg'), p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+    wsPlot([Math.round(wsFromX(p.x)), Math.round(wsFromY(p.y))]);
+  });
+  grid.addEventListener('keydown', (e) => {
+    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    const cu = worksheet.cursor || [0, 0];
+    if (step) { e.preventDefault(); worksheet.cursor = cu.map((v, i) => Math.max(-WS.range, Math.min(WS.range, v + step[i]))); wsDraw(); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wsPlot(cu); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open') && !modalOpen && !tour) wsOpen(false); });
+  wsDraw();
+}
+const wsUnit = () => (WS.size - WS.pad * 2) / (WS.range * 2);
+const wsX = (v) => WS.pad + (v + WS.range) * wsUnit(), wsY = (v) => WS.size - WS.pad - (v + WS.range) * wsUnit();
+const wsFromX = (px) => (px - WS.pad) / wsUnit() - WS.range, wsFromY = (py) => (WS.size - WS.pad - py) / wsUnit() - WS.range;
+function wsPlot(p) {
+  if (Math.abs(p[0]) > WS.range || Math.abs(p[1]) > WS.range) return;
+  const i = worksheet.pts.findIndex((q) => same(q, p));
+  if (i >= 0) worksheet.pts.splice(i, 1); // tapping a point again takes it off
+  else worksheet.pts.push(p);
+  wsDraw();
+}
+function wsDraw() {
+  const grid = $('.ws-grid');
+  if (!grid) return;
+  const R = WS.range, S = WS.size, u = wsUnit();
+  let s = `<svg viewBox="0 0 ${S} ${S}" aria-hidden="true"><defs><marker id="ws-ah" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path d="M2 2L10 6L2 10Z" fill="var(--axis)"/></marker>
+    <clipPath id="ws-clip"><rect x="${wsX(-R)}" y="${wsY(R)}" width="${wsX(R) - wsX(-R)}" height="${wsY(-R) - wsY(R)}"/></clipPath></defs>`;
+  for (let v = -R; v <= R; v++) s += `<line x1="${wsX(v)}" y1="${wsY(-R)}" x2="${wsX(v)}" y2="${wsY(R)}" stroke="#DCE3EA" stroke-width="1.2"/><line x1="${wsX(-R)}" y1="${wsY(v)}" x2="${wsX(R)}" y2="${wsY(v)}" stroke="#DCE3EA" stroke-width="1.2"/>`;
+  s += `<line x1="${wsX(-R) - 10}" y1="${wsY(0)}" x2="${wsX(R) + 12}" y2="${wsY(0)}" stroke="var(--axis)" stroke-width="2" marker-start="url(#ws-ah)" marker-end="url(#ws-ah)"/>`;
+  s += `<line x1="${wsX(0)}" y1="${wsY(-R) + 10}" x2="${wsX(0)}" y2="${wsY(R) - 12}" stroke="var(--axis)" stroke-width="2" marker-start="url(#ws-ah)" marker-end="url(#ws-ah)"/>`;
+  for (let v = -R; v <= R; v += 2) if (v) s += `<text x="${wsX(v)}" y="${wsY(0) + 20}" text-anchor="middle" class="ws-n">${fmt(v)}</text><text x="${wsX(0) - 8}" y="${wsY(v) + 5}" text-anchor="end" class="ws-n">${fmt(v)}</text>`;
+  s += `<text x="${wsX(R) + 4}" y="${wsY(0) - 10}" class="ws-axis">x</text><text x="${wsX(0) + 10}" y="${wsY(R) - 2}" class="ws-axis">y</text>`;
+  const pts = worksheet.pts, read = [];
+  if (pts.length >= 2) {
+    const a = pts[pts.length - 2], b = pts[pts.length - 1], d = [b[0] - a[0], b[1] - a[1]];
+    s += `<line clip-path="url(#ws-clip)" x1="${wsX(a[0] - d[0] * 20)}" y1="${wsY(a[1] - d[1] * 20)}" x2="${wsX(a[0] + d[0] * 20)}" y2="${wsY(a[1] + d[1] * 20)}" stroke="var(--orange)" stroke-width="3.5" stroke-linecap="round"/>`;
+    if (d[0] && d[1]) {
+      const corner = [b[0], a[1]];
+      s += `<line x1="${wsX(a[0])}" y1="${wsY(a[1])}" x2="${wsX(corner[0])}" y2="${wsY(corner[1])}" stroke="#1C8FD8" stroke-width="3" stroke-dasharray="8 6"/>`;
+      s += `<line x1="${wsX(corner[0])}" y1="${wsY(corner[1])}" x2="${wsX(b[0])}" y2="${wsY(b[1])}" stroke="#12A066" stroke-width="3" stroke-dasharray="8 6"/>`;
+      s += `<text x="${(wsX(a[0]) + wsX(corner[0])) / 2}" y="${wsY(a[1]) + (d[1] > 0 ? 22 : -10)}" text-anchor="middle" class="ws-tag" style="fill:#1C8FD8">across ${fmt(d[0])}</text>`;
+      s += `<text x="${wsX(b[0]) + (d[0] > 0 ? 10 : -10)}" y="${(wsY(corner[1]) + wsY(b[1])) / 2 + 6}" text-anchor="${d[0] > 0 ? 'start' : 'end'}" class="ws-tag" style="fill:#12A066">up ${fmt(d[1])}</text>`;
+    }
+    read.push(d[0] ? `Across ${fmt(d[0])}, up ${fmt(d[1])}.` : 'That line goes straight up and down.');
+  }
+  pts.forEach((p, i) => {
+    const col = i === pts.length - 1 ? '#7A4BD8' : '#1EA1E6';
+    s += `<circle cx="${wsX(p[0])}" cy="${wsY(p[1])}" r="${u * 0.24}" fill="${col}" stroke="#fff" stroke-width="3"/><text x="${wsX(p[0]) + 10}" y="${wsY(p[1]) - 10}" class="ws-pt" style="fill:${col}">(${p.map(fmt).join(', ')})</text>`;
+  });
+  if (worksheet.cursor) s += `<circle cx="${wsX(worksheet.cursor[0])}" cy="${wsY(worksheet.cursor[1])}" r="${u * 0.42}" fill="none" stroke="#FFBD20" stroke-width="3" stroke-dasharray="6 4"/>`;
+  grid.innerHTML = `${s}</svg>`;
+  if (pts.length) read.unshift(`Points: ${pts.map((p) => `(${p.map(fmt).join(', ')})`).join(', ')}.`);
+  $('.ws-read').textContent = read.join(' ');
+  $('.ws-undo').disabled = $('.ws-clear').disabled = !pts.length;
+}
+function wsOpen(open) {
+  const panel = $('#worksheet'), tab = $('#ws-tab');
+  if (!panel) return;
+  panel.classList.toggle('open', open);
+  panel.inert = !open;
+  tab.setAttribute('aria-expanded', String(open));
+  if (open) {
+    tab.classList.remove('pulse');
+    emit('worksheet', { action: 'open' });
+    setTimeout(() => $('.ws-grid', panel).focus({ preventScroll: true }), 50);
+  } else if (panel.contains(document.activeElement)) tab.focus({ preventScroll: true });
+}
+// after a wrong answer: Fitila points the learner to the worksheet (or their book) and the tab pulses
+function wsNudge() {
+  if (!wsScreen(page)) return '';
+  if (!$('#worksheet')?.classList.contains('open')) $('#ws-tab').classList.add('pulse');
+  return ' Try it on your worksheet or in your book.';
+}
+// each screen gets a fresh worksheet; coming back to the same screen keeps it
+function wsForPage(n) {
+  $('#ws-tab').hidden = !wsScreen(n);
+  if (!wsScreen(n)) wsOpen(false);
+  if (worksheet.page !== n) { worksheet.page = n; worksheet.pts = []; worksheet.cursor = null; $('#ws-tab').classList.remove('pulse'); wsDraw(); }
+}
+wsSetup();
 
 // ---------- keep the focused answer box (and its button) above an on-screen keyboard ----------
 if (window.visualViewport) {
@@ -1420,6 +1539,14 @@ $('#audio').addEventListener('click', () => {
   speechSynthesis.speak(u);
 });
 $('#help').addEventListener('click', () => startTour());
+// Back: leaves guided practice or the walkthrough first, otherwise returns to the previous screen
+$('#back').addEventListener('click', () => {
+  if (tour) { endTour(false); return; }
+  if (guided) { endGuided('back'); return; }
+  let prev = trail.pop();
+  while (prev === page) prev = trail.pop();
+  go(prev ?? 1, { back: true });
+});
 $('#exit').addEventListener('click', () => modal({ title: 'Leave Gradient Lab?', body: 'You can come back to the welcome screen.', pose: 'think', action: 'Back to start', onAction: () => go(1) }));
 document.documentElement.classList.toggle('anim', !reduced());
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', () => document.documentElement.classList.toggle('anim', !reduced()));
